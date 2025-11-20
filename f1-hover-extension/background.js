@@ -55,23 +55,25 @@ async function handleDriverRequest(slug) {
   const latestSeasonEntry = orderedSeasons.at(-1)
   const currentSeason = latestSeasonEntry?.season
 
-  let recentResults = []
-  let currentSeasonSnapshot = null
+  const recentSeasonIds = orderedSeasons.slice(-3).map((s) => s.season)
 
-  if (currentSeason) {
-    const [results, snapshot] = await Promise.all([
-      fetchRecentResults(slug, currentSeason, 4),
-      fetchCurrentSeasonSnapshot(slug, currentSeason),
-    ])
-    recentResults = results
-    currentSeasonSnapshot = snapshot
-  }
+  const [
+    currentSeasonSnapshot,
+    currentSeasonResults,
+    seasonSummaries,
+  ] = await Promise.all([
+    currentSeason ? fetchCurrentSeasonSnapshot(slug, currentSeason) : null,
+    currentSeason ? fetchSeasonResultsData(slug, currentSeason) : null,
+    fetchSeasonSummaries(slug, recentSeasonIds),
+  ])
 
   const data = {
     driver,
     seasons: orderedSeasons,
     currentSeason: currentSeasonSnapshot,
-    recentResults,
+    seasonSummaries,
+    seasonResults: currentSeasonResults?.races ?? [],
+    seasonResultsSummary: currentSeasonResults?.summary ?? null,
   }
   cache.set(slug, { data, expiresAt: now + CACHE_TTL_MS })
   return data
@@ -113,49 +115,14 @@ async function fetchSeasonStandings(slug, seasons) {
     .sort((a, b) => Number(a.season) - Number(b.season))
 }
 
-async function fetchRecentResults(slug, season, limit = 4) {
-  try {
-    const res = await fetchJson(
-      `${ERGAST_BASE_URL}/${season}/drivers/${slug}/results.json?limit=500`
-    )
-    const races = res?.MRData?.RaceTable?.Races ?? []
-    const flattened = races
-      .map((race) => {
-        const result = race.Results?.[0]
-        if (!result) {
-          return null
-        }
-        return {
-          raceName: race.raceName,
-          circuit: race.Circuit?.circuitName,
-          date: race.date,
-          position: result.position,
-          positionText: result.positionText,
-          points: result.points,
-          status: result.status,
-          grid: result.grid,
-          laps: result.laps,
-        }
-      })
-      .filter(Boolean)
-
-    return flattened.slice(-limit).reverse()
-  } catch (error) {
-    console.warn(
-      `F1 Hover Stats background: Failed to fetch recent results for ${season}/${slug}`,
-      error
-    )
-    return []
-  }
-}
-
 async function fetchCurrentSeasonSnapshot(slug, season) {
   try {
     const standingsRes = await fetchJson(
       `${ERGAST_BASE_URL}/${season}/drivers/${slug}/driverstandings/`
     )
     const standing =
-      standingsRes?.MRData?.StandingsTable?.StandingsLists?.[0]?.DriverStandings?.[0]
+      standingsRes?.MRData?.StandingsTable?.StandingsLists?.[0]
+        ?.DriverStandings?.[0]
     if (!standing) {
       return null
     }
@@ -172,6 +139,87 @@ async function fetchCurrentSeasonSnapshot(slug, season) {
       error
     )
     return null
+  }
+}
+
+async function fetchSeasonResultsData(slug, season) {
+  try {
+    const res = await fetchJson(
+      `${ERGAST_BASE_URL}/${season}/drivers/${slug}/results.json?limit=500`
+    )
+    const races = res?.MRData?.RaceTable?.Races ?? []
+    const parsed = races
+      .map((race) => {
+        const result = race.Results?.[0]
+        if (!result) {
+          return null
+        }
+        return {
+          raceName: race.raceName,
+          circuit: race.Circuit?.circuitName,
+          date: race.date,
+          position: result.position,
+          positionText: result.positionText,
+          points: Number(result.points) || 0,
+          status: result.status,
+          grid: result.grid,
+          laps: result.laps,
+        }
+      })
+      .filter(Boolean)
+
+    const summary = summarizeSeason(parsed)
+
+    return {
+      races: parsed,
+      summary,
+    }
+  } catch (error) {
+    console.warn(
+      `F1 Hover Stats background: Failed to fetch season results for ${season}/${slug}`,
+      error
+    )
+    return { races: [], summary: null }
+  }
+}
+
+async function fetchSeasonSummaries(slug, seasons) {
+  if (!Array.isArray(seasons) || seasons.length === 0) {
+    return []
+  }
+
+  const requests = seasons.map((season) =>
+    fetchSeasonResultsData(slug, season).then((data) =>
+      data.summary
+        ? {
+            season,
+            ...data.summary,
+          }
+        : null
+    )
+  )
+
+  const results = await Promise.all(requests)
+  return results.filter(Boolean)
+}
+
+function summarizeSeason(races) {
+  if (!races.length) {
+    return null
+  }
+
+  const wins = races.filter((race) => Number(race.position) === 1).length
+  const podiums = races.filter((race) => Number(race.position) <= 3).length
+  const points = races.reduce((sum, race) => sum + (race.points || 0), 0)
+  const avgFinish =
+    races.reduce((sum, race) => sum + Number(race.position), 0) / races.length
+
+  return {
+    races: races.length,
+    wins,
+    podiums,
+    points,
+    avgFinish: Number(avgFinish.toFixed(1)),
   }
 }
 

@@ -33,6 +33,7 @@ const driverDataCache = new Map()
 let activeSlug = null
 let pointerTracking = false
 let popupHovered = false
+let hideTimeout = null
 
 const popup = document.createElement('div')
 popup.className = POPUP_CLASS
@@ -43,6 +44,7 @@ document.documentElement.appendChild(popup)
 popup.addEventListener('pointerenter', () => {
   popupHovered = true
   pointerTracking = false
+  clearTimeout(hideTimeout)
 })
 
 popup.addEventListener('pointerleave', (event) => {
@@ -50,9 +52,14 @@ popup.addEventListener('pointerleave', (event) => {
   const nextTarget =
     event.relatedTarget ||
     document.elementFromPoint(event.clientX, event.clientY)
-  if (!nextTarget?.closest?.(`.${DRIVER_CLASS}`)) {
-    hidePopup()
+  if (nextTarget?.closest?.(`.${DRIVER_CLASS}`)) {
+    return
   }
+  hideTimeout = setTimeout(() => {
+    if (!popupHovered) {
+      hidePopup()
+    }
+  }, 1000)
 })
 
 function updateDriverLookup() {
@@ -213,6 +220,7 @@ function showPopup(content, x, y) {
 }
 
 function hidePopup() {
+  clearTimeout(hideTimeout)
   activeSlug = null
   pointerTracking = false
   popupHovered = false
@@ -285,7 +293,14 @@ function requestDriverDataFromBackground(slug) {
 }
 
 function buildPopupHtml(data) {
-  const { driver, seasons, currentSeason, recentResults } = data
+  const {
+    driver,
+    seasons,
+    currentSeason,
+    seasonSummaries = [],
+    seasonResults = [],
+    seasonResultsSummary,
+  } = data
   if (!driver) {
     return '<strong>No driver data available.</strong>'
   }
@@ -323,8 +338,20 @@ function buildPopupHtml(data) {
 
   if (currentSeason) {
     statBlocks.push(
-      { label: `${currentSeason.season} Pos`, value: `P${currentSeason.position}` },
+      {
+        label: `${currentSeason.season} Pos`,
+        value: `P${currentSeason.position}`,
+      },
       { label: `${currentSeason.season} Pts`, value: currentSeason.points }
+    )
+  }
+
+  if (seasonResultsSummary) {
+    statBlocks.push(
+      { label: 'Races', value: seasonResultsSummary.races },
+      { label: 'Podiums', value: seasonResultsSummary.podiums },
+      { label: 'Wins (season)', value: seasonResultsSummary.wins },
+      { label: 'Avg Finish', value: seasonResultsSummary.avgFinish }
     )
   }
 
@@ -343,26 +370,49 @@ function buildPopupHtml(data) {
     ? `
       <div class="current-grid">
         <div><span>Season</span><strong>${currentSeason.season}</strong></div>
-        <div><span>Constructor</span><strong>${currentSeason.constructors.join(', ') || '-'}</strong></div>
-        <div><span>Standing</span><strong>P${currentSeason.position}</strong></div>
+        <div><span>Constructor</span><strong>${
+          currentSeason.constructors.join(', ') || '-'
+        }</strong></div>
+        <div><span>Standing</span><strong>P${
+          currentSeason.position
+        }</strong></div>
         <div><span>Points</span><strong>${currentSeason.points}</strong></div>
         <div><span>Wins</span><strong>${currentSeason.wins}</strong></div>
       </div>
     `
     : '<div class="empty-message">No current season snapshot yet.</div>'
 
-  const recentResultsHtml = recentResults.length
-    ? recentResults
+  const seasonSummaryRows = seasonSummaries.length
+    ? seasonSummaries
         .map(
-          (result) => `
-        <div class="result-row">
-          <div>
-            <strong>${result.raceName}</strong>
-            <span class="result-meta">${formatDate(result.date)}</span>
+          (summary) => `
+          <div class="summary-row">
+            <div class="summary-season">${summary.season}</div>
+            <div>${summary.races} GP</div>
+            <div>${summary.wins} wins</div>
+            <div>${summary.podiums} podiums</div>
+            <div>${summary.points} pts</div>
+            <div>${summary.avgFinish} avg finish</div>
           </div>
-          <div class="result-finish">
-            <span class="result-position">P${result.positionText}</span>
-            <span class="result-points">${result.points} pts</span>
+        `
+        )
+        .join('')
+    : '<div class="empty-message">No season summaries yet.</div>'
+
+  const gpRows = seasonResults.length
+    ? seasonResults
+        .map(
+          (race) => `
+        <div class="gp-row">
+          <div class="gp-meta">
+            <strong>${race.raceName}</strong>
+            <span class="result-meta">${formatDate(race.date)}</span>
+          </div>
+          <div class="gp-metrics">
+            <span>P${race.positionText}</span>
+            <span>${race.points} pts</span>
+            <span>Grid ${race.grid}</span>
+            <span>${race.status}</span>
           </div>
         </div>
       `
@@ -371,41 +421,57 @@ function buildPopupHtml(data) {
     : '<div class="empty-message">No race results available yet.</div>'
 
   return `
-    <div class="f1-card">
-      <div class="card-header">
+    <div class="f1-card vertical-card">
+      <div class="header-block">
         <div>
-          <div class="driver-name">${driver.givenName} ${driver.familyName}</div>
-          <div class="driver-meta-line">${driver.nationality} · Code ${driver.code || '-'}</div>
+          <div class="driver-name">${driver.givenName} ${
+    driver.familyName
+  }</div>
+          <div class="driver-meta-line">${driver.nationality} · Code ${
+    driver.code || '-'
+  }</div>
           <div class="driver-meta-line">DOB ${formattedDOB}</div>
         </div>
-        <div class="stat-grid">${statHtml}</div>
       </div>
-      <div class="card-body">
-        <div class="season-section">
-          <div class="section-title">Recent seasons</div>
-          <div class="season-headings">
+      <div class="chip-strip">${statHtml}</div>
+      <div class="season-section">
+        <div class="section-title">Recent seasons</div>
+        <div class="season-headings">
+          <span>Season</span>
+          <span>Team(s)</span>
+          <span>Finish</span>
+          <span>Points</span>
+          <span>Wins</span>
+        </div>
+        ${seasonRows || '<div class="season-row">No season data yet.</div>'}
+        <div class="season-footnote">Showing last ${Math.min(
+          MAX_SEASONS_IN_POPUP,
+          seasons.length
+        )} season(s)</div>
+      </div>
+      <div class="season-summary">
+        <div class="section-title">Season comparisons</div>
+        <div class="summary-grid">
+          <div class="summary-headings">
             <span>Season</span>
-            <span>Team(s)</span>
-            <span>Finish</span>
-            <span>Points</span>
+            <span>GP</span>
             <span>Wins</span>
+            <span>Podiums</span>
+            <span>Points</span>
+            <span>Avg finish</span>
           </div>
-          ${seasonRows || '<div class="season-row">No season data yet.</div>'}
-          <div class="season-footnote">Showing last ${Math.min(
-            MAX_SEASONS_IN_POPUP,
-            seasons.length
-          )} season(s)</div>
+          ${seasonSummaryRows}
         </div>
-        <div class="insight-section">
-          <div class="section-block">
-            <div class="section-title">Current championship</div>
-            ${currentSeasonHtml}
-          </div>
-          <div class="section-block">
-            <div class="section-title">Recent races</div>
-            ${recentResultsHtml}
-          </div>
-        </div>
+      </div>
+      <div class="section-block">
+        <div class="section-title">Current championship</div>
+        ${currentSeasonHtml}
+      </div>
+      <div class="section-block gp-section">
+        <div class="section-title">Race results ${
+          currentSeason?.season ? `(${currentSeason.season})` : ''
+        }</div>
+        <div class="gp-list">${gpRows}</div>
       </div>
     </div>
   `
@@ -429,6 +495,7 @@ function handlePointerEnter(event) {
   if (!target) {
     return
   }
+  clearTimeout(hideTimeout)
   const { pageX, pageY } = event
   handleDriverFocus(target, pageX, pageY)
 }
@@ -438,10 +505,11 @@ function handlePointerLeave(event) {
   if (!target || target.dataset.driver !== activeSlug) {
     return
   }
-  if (popupHovered) {
-    return
-  }
-  hidePopup()
+  hideTimeout = setTimeout(() => {
+    if (!popupHovered) {
+      hidePopup()
+    }
+  }, 1000)
 }
 
 function handlePointerMove(event) {
