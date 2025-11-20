@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "F1 Hover Stats",
+  "version": "1.0.0",
+  "description": "Hover over an F1 driver's name to see rich bio and season-by-season stats from the Ergast API.",
+  "permissions": [],
+  "host_permissions": ["https://api.jolpi.ca/*"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "css": ["style.css"],
+      "run_at": "document_idle"
+    }
+  ]
+}

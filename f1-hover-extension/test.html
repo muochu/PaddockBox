@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>F1 Hover Stats Test</title>
+</head>
+<body>
+  <h1>F1 Driver Test Page</h1>
+  <p>Hover over these driver names to test the extension:</p>
+  <ul>
+    <li>Lewis Hamilton is a great driver</li>
+    <li>Max Verstappen won the championship</li>
+    <li>Charles Leclerc drives for Ferrari</li>
+    <li>Lando Norris is with McLaren</li>
+  </ul>
+  <p>If the extension is working, you should see yellow highlights on the driver names.</p>
+  
+  <script>
+    // Check if extension is loaded
+    setTimeout(() => {
+      if (window.__F1HoverStats) {
+        console.log('✅ Extension detected!')
+        console.log('Drivers loaded:', window.__F1HoverStats.getDrivers().length)
+        console.log('Ready:', window.__F1HoverStats.getReady())
+      } else {
+        console.log('❌ Extension not detected. Make sure it\'s loaded and enabled.')
+      }
+    }, 2000)
+  </script>
+</body>
+</html>
+
