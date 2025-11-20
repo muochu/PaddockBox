@@ -15,82 +15,115 @@
 
 .f1-popup {
   position: absolute;
-  min-width: 280px;
-  max-width: 320px;
-  background: #0b0b0f;
+  min-width: 420px;
+  max-width: 520px;
+  background: #050508;
   color: #f5f5f5;
-  padding: 14px 16px;
+  padding: 18px 20px;
   border-radius: 12px;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55);
   font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-size: 13px;
-  line-height: 1.4;
+  line-height: 1.45;
   z-index: 2147483647;
-  pointer-events: none;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  pointer-events: auto;
+  border: 1px solid rgba(255, 255, 255, 0.09);
 }
 
-.f1-popup hr {
-  border: none;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  margin: 10px 0;
+.f1-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
-.driver-header {
+.card-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  gap: 12px;
+  gap: 24px;
 }
 
-.driver-meta {
-  color: rgba(255, 255, 255, 0.7);
+.driver-name {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.driver-meta-line {
+  color: rgba(255, 255, 255, 0.75);
   font-size: 12px;
 }
 
-.driver-summary {
+.stat-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
   gap: 8px;
-  margin: 12px 0;
+  min-width: 200px;
 }
 
-.driver-summary .summary-label {
+.stat-chip {
+  background: rgba(255, 255, 255, 0.06);
+  padding: 8px 10px;
+  border-radius: 8px;
+  text-align: left;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.chip-label {
+  display: block;
   font-size: 11px;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
   color: rgba(255, 255, 255, 0.6);
+  margin-bottom: 2px;
 }
 
-.driver-summary .summary-value {
+.chip-value {
+  font-size: 14px;
   font-weight: 600;
-  display: block;
 }
 
-.season-list {
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  padding-top: 10px;
+.card-body {
+  display: flex;
+  gap: 20px;
+}
+
+.season-section,
+.insight-section {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 10px;
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.section-title {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.7);
+  margin-bottom: 6px;
 }
 
 .season-headings,
 .season-row {
   display: grid;
-  grid-template-columns: 0.8fr 1.4fr repeat(3, 0.8fr);
+  grid-template-columns: 0.7fr 1.2fr repeat(3, 0.9fr);
   gap: 6px;
   align-items: center;
 }
 
 .season-headings {
-  font-size: 11px;
+  font-size: 10px;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: rgba(255, 255, 255, 0.6);
-  margin-bottom: 4px;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.55);
+  margin-bottom: 6px;
 }
 
 .season-row {
-  padding: 4px 0;
+  padding: 6px 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 12px;
 }
 
 .season-row:last-of-type {
@@ -107,10 +140,81 @@
 
 .season-metric {
   text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 .season-footnote {
-  margin-top: 6px;
+  margin-top: 8px;
   font-size: 11px;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.insight-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.section-block {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+  padding: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.current-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  font-size: 12px;
+}
+
+.current-grid span {
+  display: block;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 2px;
+}
+
+.current-grid strong {
+  font-size: 14px;
+}
+
+.result-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.result-row:last-of-type {
+  border-bottom: none;
+}
+
+.result-meta {
+  display: block;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 11px;
+}
+
+.result-finish {
+  text-align: right;
+}
+
+.result-position {
+  font-weight: 600;
+  margin-right: 8px;
+}
+
+.result-points {
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.empty-message {
+  font-size: 12px;
   color: rgba(255, 255, 255, 0.5);
+  padding: 4px 0;
 }

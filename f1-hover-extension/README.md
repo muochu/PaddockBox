@@ -4,12 +4,14 @@ A lightweight Chrome (MV3) extension that highlights Formula 1 driver names on a
 
 ## Features
 
-- **Dynamic driver detection**: Automatically fetches the current F1 drivers list from the Ergast API on extension load (cached for 24 hours), so the extension stays up-to-date without manual updates.
+- **Dynamic driver detection**: Automatically fetches the current F1 drivers list from the Ergast API mirror on extension load (cached for 24 hours), so the extension stays up-to-date without manual updates.
 - Automatically scans any page (including dynamically injected content) for F1 driver names and wraps them with an accessible inline badge.
 - On hover or keyboard focus, fetches live data via the extension background service worker from the HTTPS Ergast mirror (`https://api.jolpi.ca/ergast/f1/...`), caches the response, and renders:
   - Full name, nationality, driver code, and date of birth.
   - Career summary (seasons raced, total wins, championship titles, active years).
+  - Current-season snapshot (constructor, standing, live points/wins).
   - Last ten seasons with team(s), finishing position, total points, and wins.
+  - Recent race results for the active season.
 - Popup follows the cursor, stays within viewport bounds, and dismisses instantly when focus leaves.
 - Written in vanilla JavaScript + CSS for zero dependencies.
 

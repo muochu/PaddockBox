@@ -32,12 +32,28 @@ const MAX_SEASONS_IN_POPUP = 10
 const driverDataCache = new Map()
 let activeSlug = null
 let pointerTracking = false
+let popupHovered = false
 
 const popup = document.createElement('div')
 popup.className = POPUP_CLASS
 popup.setAttribute('role', 'status')
 popup.style.display = 'none'
 document.documentElement.appendChild(popup)
+
+popup.addEventListener('pointerenter', () => {
+  popupHovered = true
+  pointerTracking = false
+})
+
+popup.addEventListener('pointerleave', (event) => {
+  popupHovered = false
+  const nextTarget =
+    event.relatedTarget ||
+    document.elementFromPoint(event.clientX, event.clientY)
+  if (!nextTarget?.closest?.(`.${DRIVER_CLASS}`)) {
+    hidePopup()
+  }
+})
 
 function updateDriverLookup() {
   DRIVER_LOOKUP = DRIVER_DIRECTORY.reduce((acc, driver) => {
@@ -199,6 +215,7 @@ function showPopup(content, x, y) {
 function hidePopup() {
   activeSlug = null
   pointerTracking = false
+  popupHovered = false
   popup.style.display = 'none'
   popup.innerHTML = ''
 }
@@ -268,7 +285,7 @@ function requestDriverDataFromBackground(slug) {
 }
 
 function buildPopupHtml(data) {
-  const { driver, seasons } = data
+  const { driver, seasons, currentSeason, recentResults } = data
   if (!driver) {
     return '<strong>No driver data available.</strong>'
   }
@@ -297,39 +314,99 @@ function buildPopupHtml(data) {
     })
     .join('')
 
+  const statBlocks = [
+    { label: 'Seasons', value: seasons.length },
+    { label: 'Active', value: `${firstSeason || '-'}–${lastSeason || '-'}` },
+    { label: 'Wins', value: totalWins },
+    { label: 'Titles', value: championships },
+  ]
+
+  if (currentSeason) {
+    statBlocks.push(
+      { label: `${currentSeason.season} Pos`, value: `P${currentSeason.position}` },
+      { label: `${currentSeason.season} Pts`, value: currentSeason.points }
+    )
+  }
+
+  const statHtml = statBlocks
+    .map(
+      (stat) => `
+      <div class="stat-chip">
+        <span class="chip-label">${stat.label}</span>
+        <span class="chip-value">${stat.value}</span>
+      </div>
+    `
+    )
+    .join('')
+
+  const currentSeasonHtml = currentSeason
+    ? `
+      <div class="current-grid">
+        <div><span>Season</span><strong>${currentSeason.season}</strong></div>
+        <div><span>Constructor</span><strong>${currentSeason.constructors.join(', ') || '-'}</strong></div>
+        <div><span>Standing</span><strong>P${currentSeason.position}</strong></div>
+        <div><span>Points</span><strong>${currentSeason.points}</strong></div>
+        <div><span>Wins</span><strong>${currentSeason.wins}</strong></div>
+      </div>
+    `
+    : '<div class="empty-message">No current season snapshot yet.</div>'
+
+  const recentResultsHtml = recentResults.length
+    ? recentResults
+        .map(
+          (result) => `
+        <div class="result-row">
+          <div>
+            <strong>${result.raceName}</strong>
+            <span class="result-meta">${formatDate(result.date)}</span>
+          </div>
+          <div class="result-finish">
+            <span class="result-position">P${result.positionText}</span>
+            <span class="result-points">${result.points} pts</span>
+          </div>
+        </div>
+      `
+        )
+        .join('')
+    : '<div class="empty-message">No race results available yet.</div>'
+
   return `
-    <div class="driver-header">
-      <div>
-        <strong>${driver.givenName} ${driver.familyName}</strong>
-        <div class="driver-meta">${driver.nationality} · Code ${
-    driver.code || '-'
-  }</div>
-        <div class="driver-meta">DOB ${formattedDOB}</div>
+    <div class="f1-card">
+      <div class="card-header">
+        <div>
+          <div class="driver-name">${driver.givenName} ${driver.familyName}</div>
+          <div class="driver-meta-line">${driver.nationality} · Code ${driver.code || '-'}</div>
+          <div class="driver-meta-line">DOB ${formattedDOB}</div>
+        </div>
+        <div class="stat-grid">${statHtml}</div>
       </div>
-    </div>
-    <div class="driver-summary">
-      <div><span class="summary-label">Seasons</span><span class="summary-value">${
-        seasons.length
-      }</span></div>
-      <div><span class="summary-label">Active</span><span class="summary-value">${
-        firstSeason || '-'
-      }–${lastSeason || '-'}</span></div>
-      <div><span class="summary-label">Wins</span><span class="summary-value">${totalWins}</span></div>
-      <div><span class="summary-label">Titles</span><span class="summary-value">${championships}</span></div>
-    </div>
-    <div class="season-list">
-      <div class="season-headings">
-        <span>Season</span>
-        <span>Team(s)</span>
-        <span>Finish</span>
-        <span>Points</span>
-        <span>Wins</span>
+      <div class="card-body">
+        <div class="season-section">
+          <div class="section-title">Recent seasons</div>
+          <div class="season-headings">
+            <span>Season</span>
+            <span>Team(s)</span>
+            <span>Finish</span>
+            <span>Points</span>
+            <span>Wins</span>
+          </div>
+          ${seasonRows || '<div class="season-row">No season data yet.</div>'}
+          <div class="season-footnote">Showing last ${Math.min(
+            MAX_SEASONS_IN_POPUP,
+            seasons.length
+          )} season(s)</div>
+        </div>
+        <div class="insight-section">
+          <div class="section-block">
+            <div class="section-title">Current championship</div>
+            ${currentSeasonHtml}
+          </div>
+          <div class="section-block">
+            <div class="section-title">Recent races</div>
+            ${recentResultsHtml}
+          </div>
+        </div>
       </div>
-      ${seasonRows || '<div class="season-row">No season data yet.</div>'}
-      <div class="season-footnote">Showing last ${Math.min(
-        MAX_SEASONS_IN_POPUP,
-        seasons.length
-      )} season(s)</div>
     </div>
   `
 }
@@ -361,11 +438,14 @@ function handlePointerLeave(event) {
   if (!target || target.dataset.driver !== activeSlug) {
     return
   }
+  if (popupHovered) {
+    return
+  }
   hidePopup()
 }
 
 function handlePointerMove(event) {
-  if (!pointerTracking) {
+  if (!pointerTracking || popupHovered) {
     return
   }
   positionPopup(event.pageX, event.pageY)
