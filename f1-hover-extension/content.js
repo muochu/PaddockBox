@@ -421,9 +421,9 @@ function buildPopupHtml(data) {
     : '<div class="empty-message">No race results available yet.</div>'
 
   return `
-    <div class="f1-card vertical-card">
+    <div class="f1-card horizontal-card">
       <div class="header-block">
-        <div>
+      <div>
           <div class="driver-name">${driver.givenName} ${
     driver.familyName
   }</div>
@@ -432,46 +432,54 @@ function buildPopupHtml(data) {
   }</div>
           <div class="driver-meta-line">DOB ${formattedDOB}</div>
         </div>
+        <div class="chip-strip">${statHtml}</div>
       </div>
-      <div class="chip-strip">${statHtml}</div>
-      <div class="season-section">
-        <div class="section-title">Recent seasons</div>
-        <div class="season-headings">
-          <span>Season</span>
-          <span>Team(s)</span>
-          <span>Finish</span>
-          <span>Points</span>
-          <span>Wins</span>
-        </div>
-        ${seasonRows || '<div class="season-row">No season data yet.</div>'}
-        <div class="season-footnote">Showing last ${Math.min(
-          MAX_SEASONS_IN_POPUP,
-          seasons.length
-        )} season(s)</div>
+      <div class="main-content">
+        <div class="content-column">
+          <div class="season-section">
+            <div class="section-title">Recent seasons</div>
+      <div class="season-headings">
+        <span>Season</span>
+        <span>Team(s)</span>
+        <span>Finish</span>
+        <span>Points</span>
+        <span>Wins</span>
       </div>
-      <div class="season-summary">
-        <div class="section-title">Season comparisons</div>
-        <div class="summary-grid">
-          <div class="summary-headings">
-            <span>Season</span>
-            <span>GP</span>
-            <span>Wins</span>
-            <span>Podiums</span>
-            <span>Points</span>
-            <span>Avg finish</span>
+      ${seasonRows || '<div class="season-row">No season data yet.</div>'}
+            <div class="season-footnote">Showing last ${Math.min(
+              MAX_SEASONS_IN_POPUP,
+              seasons.length
+            )} season(s)</div>
           </div>
-          ${seasonSummaryRows}
+          <div class="section-block">
+            <div class="section-title">Current championship</div>
+            ${currentSeasonHtml}
+          </div>
         </div>
-      </div>
-      <div class="section-block">
-        <div class="section-title">Current championship</div>
-        ${currentSeasonHtml}
-      </div>
-      <div class="section-block gp-section">
-        <div class="section-title">Race results ${
-          currentSeason?.season ? `(${currentSeason.season})` : ''
-        }</div>
-        <div class="gp-list">${gpRows}</div>
+        <div class="content-column">
+          <div class="season-summary">
+            <div class="section-title">Season comparisons</div>
+            <div class="summary-grid">
+              <div class="summary-headings">
+                <span>Season</span>
+                <span>GP</span>
+                <span>Wins</span>
+                <span>Podiums</span>
+                <span>Points</span>
+                <span>Avg finish</span>
+              </div>
+              ${seasonSummaryRows}
+            </div>
+          </div>
+        </div>
+        <div class="content-column">
+          <div class="section-block gp-section">
+            <div class="section-title">Race results ${
+              currentSeason?.season ? `(${currentSeason.season})` : ''
+            }</div>
+            <div class="gp-list">${gpRows}</div>
+          </div>
+        </div>
       </div>
     </div>
   `
