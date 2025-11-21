@@ -205,18 +205,31 @@ function createDriverSpan(driver) {
   return span
 }
 
-function positionPopup(x, y) {
-  popup.style.left = `${x + 12}px`
-  popup.style.top = `${y + 12}px`
+function positionPopup() {
+  // Center the popup on screen dynamically
+  const viewportWidth = window.innerWidth
+  const viewportHeight = window.innerHeight
+  const popupWidth = popup.offsetWidth || Math.min(1400, viewportWidth * 0.95)
+  const popupHeight = popup.offsetHeight || Math.min(600, viewportHeight * 0.85)
+  
+  // Center horizontally and vertically
+  const left = (viewportWidth - popupWidth) / 2
+  const top = Math.max(20, (viewportHeight - popupHeight) / 2)
+  
+  popup.style.left = `${left}px`
+  popup.style.top = `${top}px`
+  popup.style.transform = 'translate(0, 0)'
 }
 
 function showPopup(content, x, y) {
   popup.innerHTML = content
   popup.style.display = 'block'
   popup.style.opacity = '1'
-  if (typeof x === 'number' && typeof y === 'number') {
-    positionPopup(x, y)
-  }
+  
+  // Use requestAnimationFrame to ensure DOM is updated before positioning
+  requestAnimationFrame(() => {
+    positionPopup()
+  })
 }
 
 function hidePopup() {
@@ -524,7 +537,7 @@ function handlePointerMove(event) {
   if (!pointerTracking || popupHovered) {
     return
   }
-  positionPopup(event.pageX, event.pageY)
+  // Popup stays centered, no need to follow cursor
 }
 
 function handleFocusIn(event) {
