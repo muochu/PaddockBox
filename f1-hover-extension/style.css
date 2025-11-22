@@ -49,19 +49,21 @@
 }
 
 .header-block {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 32px;
   align-items: flex-start;
-  gap: 20px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  padding-bottom: 12px;
+  padding-bottom: 16px;
+  margin-bottom: 4px;
 }
 
 .main-content {
   display: grid;
-  grid-template-columns: 1fr 1.2fr 1.3fr;
-  gap: 20px;
+  grid-template-columns: 1.1fr 1fr 1.2fr;
+  gap: 24px;
   align-items: start;
+  grid-auto-rows: min-content;
 }
 
 .driver-name {
@@ -77,9 +79,10 @@
 
 .chip-strip {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
   gap: 8px;
-  margin-bottom: 4px;
+  width: 100%;
+  max-width: 600px;
 }
 
 .stat-chip {
@@ -108,15 +111,26 @@
 .section-block {
   background: rgba(255, 255, 255, 0.02);
   border-radius: 10px;
-  padding: 12px 14px;
+  padding: 14px 16px;
   border: 1px solid rgba(255, 255, 255, 0.05);
-  height: fit-content;
+  min-height: fit-content;
+  display: flex;
+  flex-direction: column;
 }
 
 .content-column {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
+  min-height: 0;
+}
+
+.content-column:first-child {
+  min-width: 0;
+}
+
+.content-column:last-child {
+  min-width: 0;
 }
 
 .section-title {
@@ -130,9 +144,10 @@
 .season-headings,
 .season-row {
   display: grid;
-  grid-template-columns: 0.7fr 1.2fr repeat(3, 0.9fr);
-  gap: 8px;
+  grid-template-columns: 0.65fr 1.3fr repeat(3, 0.95fr);
+  gap: 10px;
   align-items: center;
+  width: 100%;
 }
 
 .season-headings {
@@ -233,8 +248,10 @@
 }
 
 .gp-section {
-  max-height: 400px;
+  max-height: 500px;
   overflow-y: auto;
+  flex: 1;
+  min-height: 200px;
 }
 
 .gp-list {

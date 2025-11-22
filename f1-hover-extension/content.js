@@ -211,11 +211,11 @@ function positionPopup() {
   const viewportHeight = window.innerHeight
   const popupWidth = popup.offsetWidth || Math.min(1400, viewportWidth * 0.95)
   const popupHeight = popup.offsetHeight || Math.min(600, viewportHeight * 0.85)
-  
+
   // Center horizontally and vertically
   const left = (viewportWidth - popupWidth) / 2
   const top = Math.max(20, (viewportHeight - popupHeight) / 2)
-  
+
   popup.style.left = `${left}px`
   popup.style.top = `${top}px`
   popup.style.transform = 'translate(0, 0)'
@@ -225,7 +225,7 @@ function showPopup(content, x, y) {
   popup.innerHTML = content
   popup.style.display = 'block'
   popup.style.opacity = '1'
-  
+
   // Use requestAnimationFrame to ensure DOM is updated before positioning
   requestAnimationFrame(() => {
     positionPopup()
@@ -436,7 +436,7 @@ function buildPopupHtml(data) {
   return `
     <div class="f1-card horizontal-card">
       <div class="header-block">
-      <div>
+        <div>
           <div class="driver-name">${driver.givenName} ${
     driver.familyName
   }</div>
