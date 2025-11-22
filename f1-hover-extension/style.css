@@ -293,22 +293,8 @@
   white-space: nowrap;
 }
 
-.gp-list {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
 .gp-row:last-of-type {
   border-bottom: none;
-}
-
-.gp-metrics {
-  display: flex;
-  gap: 8px;
-  font-size: 10px;
-  color: rgba(255, 255, 255, 0.8);
-  flex-shrink: 0;
 }
 
 .result-meta {
