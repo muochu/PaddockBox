@@ -18,8 +18,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message?.type === 'fetch-drivers-list') {
     handleDriversListRequest()
-    .then((data) => sendResponse({ data }))
-    .catch((error) => {
+      .then((data) => sendResponse({ data }))
+      .catch((error) => {
         console.error('F1 Hover Stats background:', error)
         sendResponse({ error: error.message || 'Unknown error' })
       })
@@ -50,11 +50,11 @@ async function handleDriverRequest(slug) {
 
   // Fetch standings for all seasons (with better error handling)
   const seasonsData = await fetchSeasonStandings(slug, allSeasonsList)
-  
+
   // Create a complete seasons array including failed fetches
   const seasonsMap = new Map()
   seasonsData.forEach((s) => seasonsMap.set(s.season, s))
-  
+
   // Fill in missing seasons with placeholder data
   const completeSeasons = allSeasonsList.map((season) => {
     if (seasonsMap.has(season)) {
@@ -74,9 +74,7 @@ async function handleDriverRequest(slug) {
   const orderedSeasons = completeSeasons.sort(
     (a, b) => Number(a.season) - Number(b.season)
   )
-  const latestSeasonEntry = orderedSeasons
-    .filter((s) => !s._incomplete)
-    .at(-1)
+  const latestSeasonEntry = orderedSeasons.filter((s) => !s._incomplete).at(-1)
   const currentSeason = latestSeasonEntry?.season
 
   const recentSeasonIds = orderedSeasons.slice(-3).map((s) => s.season)
@@ -130,7 +128,9 @@ async function fetchSeasonStandings(slug, seasons) {
       } catch (error) {
         if (attempt === retries) {
           console.warn(
-            `F1 Hover Stats background: Failed to fetch standings for ${season}/${slug} after ${retries + 1} attempts:`,
+            `F1 Hover Stats background: Failed to fetch standings for ${season}/${slug} after ${
+              retries + 1
+            } attempts:`,
             error.message
           )
           return null
@@ -168,11 +168,11 @@ async function fetchCurrentSeasonSnapshot(slug, season) {
     if (!standing) {
       return null
     }
-      return {
+    return {
       season,
-        position: standing.position,
-        points: standing.points,
-        wins: Number(standing.wins) || 0,
+      position: standing.position,
+      points: standing.points,
+      wins: Number(standing.wins) || 0,
       constructors: (standing.Constructors || []).map((team) => team.name),
     }
   } catch (error) {
@@ -398,7 +398,7 @@ async function fetchJson(url) {
       'for',
       url
     )
-  if (!response.ok) {
+    if (!response.ok) {
       throw new Error(
         `Request failed: ${response.status} ${response.statusText}`
       )
