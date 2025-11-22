@@ -323,13 +323,19 @@ function buildPopupHtml(data) {
   }
 
   const formattedDOB = formatDate(driver.dateOfBirth)
-  const totalWins = seasons.reduce((sum, season) => sum + season.wins, 0)
-  const championships = seasons.filter(
+  
+  // Filter out incomplete seasons for calculations
+  const completeSeasons = seasons.filter((s) => !s._incomplete)
+  const totalWins = completeSeasons.reduce((sum, season) => sum + (season.wins || 0), 0)
+  const championships = completeSeasons.filter(
     (season) => Number(season.position) === 1
   ).length
-  const lastSeason = seasons.at(-1)?.season
+  
+  // Use all seasons (including incomplete) for count, but complete ones for display
+  const totalSeasonsCount = seasons.length
+  const lastSeason = completeSeasons.at(-1)?.season || seasons.at(-1)?.season
   const firstSeason = seasons[0]?.season
-  const seasonsToDisplay = seasons.slice(-MAX_SEASONS_IN_POPUP).reverse()
+  const seasonsToDisplay = completeSeasons.slice(-MAX_SEASONS_IN_POPUP).reverse()
 
   const seasonRows = seasonsToDisplay
     .map((season) => {
@@ -347,7 +353,7 @@ function buildPopupHtml(data) {
     .join('')
 
   const statBlocks = [
-    { label: 'Seasons', value: seasons.length },
+    { label: 'Seasons', value: totalSeasonsCount },
     { label: 'Active', value: `${firstSeason || '-'}–${lastSeason || '-'}` },
     { label: 'Wins', value: totalWins },
     { label: 'Titles', value: championships },
