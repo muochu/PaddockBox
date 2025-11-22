@@ -57,15 +57,12 @@ async function handleDriverRequest(slug) {
 
   const recentSeasonIds = orderedSeasons.slice(-3).map((s) => s.season)
 
-  const [
-    currentSeasonSnapshot,
-    currentSeasonResults,
-    seasonSummaries,
-  ] = await Promise.all([
-    currentSeason ? fetchCurrentSeasonSnapshot(slug, currentSeason) : null,
-    currentSeason ? fetchSeasonResultsData(slug, currentSeason) : null,
-    fetchSeasonSummaries(slug, recentSeasonIds),
-  ])
+  const [currentSeasonSnapshot, currentSeasonResults, seasonSummaries] =
+    await Promise.all([
+      currentSeason ? fetchCurrentSeasonSnapshot(slug, currentSeason) : null,
+      currentSeason ? fetchSeasonResultsData(slug, currentSeason) : null,
+      fetchSeasonSummaries(slug, recentSeasonIds),
+    ])
 
   const data = {
     driver,
