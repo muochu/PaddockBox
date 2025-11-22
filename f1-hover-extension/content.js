@@ -27,7 +27,7 @@ const IGNORED_TAGS = new Set([
 
 const POPUP_CLASS = 'f1-popup'
 const DRIVER_CLASS = 'f1-driver'
-const MAX_SEASONS_IN_POPUP = 10
+const MAX_SEASONS_IN_POPUP = 5
 
 const driverDataCache = new Map()
 let activeSlug = null
@@ -436,7 +436,7 @@ function buildPopupHtml(data) {
   return `
     <div class="f1-card horizontal-card">
       <div class="header-block">
-        <div>
+      <div>
           <div class="driver-name">${driver.givenName} ${
     driver.familyName
   }</div>
