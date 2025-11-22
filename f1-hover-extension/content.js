@@ -41,20 +41,24 @@ popup.setAttribute('role', 'status')
 popup.style.display = 'none'
 document.documentElement.appendChild(popup)
 
-popup.addEventListener('pointerenter', () => {
+popup.addEventListener('pointerenter', (event) => {
+  event.stopPropagation()
   popupHovered = true
   pointerTracking = false
   clearTimeout(hideTimeout)
 })
 
 popup.addEventListener('pointerleave', (event) => {
+  event.stopPropagation()
   popupHovered = false
+  // Check if cursor moved to a driver name
   const nextTarget =
     event.relatedTarget ||
     document.elementFromPoint(event.clientX, event.clientY)
   if (nextTarget?.closest?.(`.${DRIVER_CLASS}`)) {
     return
   }
+  // Hide after 1 second if cursor is still outside
   hideTimeout = setTimeout(() => {
     if (!popupHovered) {
       hidePopup()
