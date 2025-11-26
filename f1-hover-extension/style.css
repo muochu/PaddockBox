@@ -80,10 +80,10 @@
 
 .chip-strip {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
   gap: 8px;
   width: 100%;
-  max-width: 500px;
+  max-width: 100%;
 }
 
 .stat-chip {

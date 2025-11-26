@@ -364,23 +364,24 @@ function buildPopupHtml(data) {
     { label: 'Titles', value: championships },
   ]
 
-  if (currentSeason) {
-    statBlocks.push(
-      {
-        label: `${currentSeason.season} Pos`,
-        value: `P${currentSeason.position}`,
-      },
-      { label: `${currentSeason.season} Pts`, value: currentSeason.points }
-    )
-  }
-
   if (seasonResultsSummary) {
     statBlocks.push(
       { label: 'Races', value: seasonResultsSummary.races },
-      { label: 'Podiums', value: seasonResultsSummary.podiums },
-      { label: 'Wins (season)', value: seasonResultsSummary.wins },
       { label: 'Avg Finish', value: seasonResultsSummary.avgFinish }
     )
+  }
+
+  if (currentSeason) {
+    const constructorLabel = currentSeason.constructors?.join(', ') || '–'
+    statBlocks.push(
+      { label: 'Current Season', value: currentSeason.season },
+      { label: 'Constructor', value: constructorLabel },
+      { label: 'Standing', value: `P${currentSeason.position}` },
+      { label: 'Points', value: currentSeason.points },
+      { label: 'Wins (Season)', value: currentSeason.wins }
+    )
+  } else {
+    statBlocks.push({ label: 'Wins (Season)', value: seasonResultsSummary?.wins ?? 0 })
   }
 
   const statHtml = statBlocks
@@ -393,22 +394,6 @@ function buildPopupHtml(data) {
     `
     )
     .join('')
-
-  const currentSeasonHtml = currentSeason
-    ? `
-      <div class="current-grid">
-        <div><span>Season</span><strong>${currentSeason.season}</strong></div>
-        <div><span>Constructor</span><strong>${
-          currentSeason.constructors.join(', ') || '-'
-        }</strong></div>
-        <div><span>Standing</span><strong>P${
-          currentSeason.position
-        }</strong></div>
-        <div><span>Points</span><strong>${currentSeason.points}</strong></div>
-        <div><span>Wins</span><strong>${currentSeason.wins}</strong></div>
-      </div>
-    `
-    : '<div class="empty-message">No current season snapshot yet.</div>'
 
   const seasonSummaryRows = seasonSummaries.length
     ? seasonSummaries
@@ -466,7 +451,7 @@ function buildPopupHtml(data) {
         <div class="content-column">
           <div class="season-section">
             <div class="section-title">Recent seasons</div>
-      <div class="season-headings">
+          <div class="season-headings">
         <span>Season</span>
         <span>Team(s)</span>
         <span>Finish</span>
@@ -478,10 +463,6 @@ function buildPopupHtml(data) {
               MAX_SEASONS_IN_POPUP,
               seasons.length
             )} season(s)</div>
-          </div>
-          <div class="section-block">
-            <div class="section-title">Current championship</div>
-            ${currentSeasonHtml}
           </div>
         </div>
         <div class="content-column">
