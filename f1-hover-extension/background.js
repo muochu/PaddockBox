@@ -18,8 +18,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message?.type === 'fetch-drivers-list') {
     handleDriversListRequest()
-      .then((data) => sendResponse({ data }))
-      .catch((error) => {
+    .then((data) => sendResponse({ data }))
+    .catch((error) => {
         console.error('F1 Hover Stats background:', error)
         sendResponse({ error: error.message || 'Unknown error' })
       })
@@ -68,6 +68,8 @@ async function handleDriverRequest(slug) {
       wins: 0,
       constructors: [],
       _incomplete: true,
+      isChampion: false,
+      isConstructorChampion: false,
     }
   })
 
@@ -110,20 +112,28 @@ async function fetchSeasonStandings(slug, seasons) {
   const fetchWithRetry = async (season, retries = 2) => {
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
-        const res = await fetchJson(
-          `${ERGAST_BASE_URL}/${season}/drivers/${slug}/driverstandings/`
-        )
+        const [driverRes, constructorRes] = await Promise.all([
+          fetchJson(`${ERGAST_BASE_URL}/${season}/drivers/${slug}/driverstandings/`),
+          fetchJson(`${ERGAST_BASE_URL}/${season}/constructorstandings/`)
+        ])
         const standing =
-          res?.MRData?.StandingsTable?.StandingsLists?.[0]?.DriverStandings?.[0]
+          driverRes?.MRData?.StandingsTable?.StandingsLists?.[0]?.DriverStandings?.[0]
         if (!standing) {
           return null
         }
+        const championConstructor =
+          constructorRes?.MRData?.StandingsTable?.StandingsLists?.[0]?.ConstructorStandings?.[0]?.Constructor?.name
+        const constructors = (standing.Constructors || []).map((team) => team.name)
+        const isConstructorChampion =
+          constructors.includes(championConstructor)
         return {
           season,
           position: standing.position,
           points: standing.points,
           wins: Number(standing.wins) || 0,
-          constructors: (standing.Constructors || []).map((team) => team.name),
+          constructors,
+          isChampion: Number(standing.position) === 1,
+          isConstructorChampion,
         }
       } catch (error) {
         if (attempt === retries) {
@@ -168,11 +178,11 @@ async function fetchCurrentSeasonSnapshot(slug, season) {
     if (!standing) {
       return null
     }
-    return {
+      return {
       season,
-      position: standing.position,
-      points: standing.points,
-      wins: Number(standing.wins) || 0,
+        position: standing.position,
+        points: standing.points,
+        wins: Number(standing.wins) || 0,
       constructors: (standing.Constructors || []).map((team) => team.name),
     }
   } catch (error) {
@@ -398,7 +408,7 @@ async function fetchJson(url) {
       'for',
       url
     )
-    if (!response.ok) {
+  if (!response.ok) {
       throw new Error(
         `Request failed: ${response.status} ${response.statusText}`
       )

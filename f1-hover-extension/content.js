@@ -27,8 +27,6 @@ const IGNORED_TAGS = new Set([
 
 const POPUP_CLASS = 'f1-popup'
 const DRIVER_CLASS = 'f1-driver'
-const MAX_SEASONS_IN_POPUP = 5
-
 const driverDataCache = new Map()
 let activeSlug = null
 let pointerTracking = false
@@ -338,16 +336,24 @@ function buildPopupHtml(data) {
   const totalSeasonsCount = seasons.length
   const lastSeason = completeSeasons.at(-1)?.season || seasons.at(-1)?.season
   const firstSeason = seasons[0]?.season
-  const seasonsToDisplay = completeSeasons
-    .slice(-MAX_SEASONS_IN_POPUP)
-    .reverse()
+  const seasonsToDisplay = [...seasons].reverse()
 
   const seasonRows = seasonsToDisplay
     .map((season) => {
       const constructorLabel = season.constructors.join(', ')
+      const driverBadge = season.isChampion
+        ? '<span class="season-icon" title="Driver Champion">🏆</span>'
+        : ''
+      const constructorBadge = season.isConstructorChampion
+        ? '<span class="season-icon constructor" title="Constructor Champion">🏎</span>'
+        : ''
       return `
         <div class="season-row">
-          <span class="season-year">${season.season}</span>
+          <span class="season-year">
+            ${season.season}
+            ${driverBadge}
+            ${constructorBadge}
+          </span>
           <span class="season-team">${constructorLabel || '-'}</span>
           <span class="season-metric">P${season.position}</span>
           <span class="season-metric">${season.points} pts</span>
@@ -357,60 +363,77 @@ function buildPopupHtml(data) {
     })
     .join('')
 
-  const statBlocks = [
+  const timelineSeasons = [...seasons].sort(
+    (a, b) => Number(a.season) - Number(b.season)
+  )
+  const seasonTimelineHtml = timelineSeasons
+    .map((season) => {
+      const driverBadge = season.isChampion
+        ? '<span class="season-badge trophy" title="Driver Champion">🏆</span>'
+        : ''
+      const constructorBadge = season.isConstructorChampion
+        ? '<span class="season-badge constructor" title="Constructor Champion">🏎</span>'
+        : ''
+      return `
+        <span class="season-pill${
+          season.isChampion ? ' driver-champ' : ''
+        }${season.isConstructorChampion ? ' constructor-champ' : ''}">
+          ${season.season}
+          ${driverBadge}
+          ${constructorBadge}
+        </span>
+      `
+    })
+    .join('')
+
+  const renderChipBlocks = (blocks) =>
+    blocks
+      .map(
+        (stat) => `
+      <div class="stat-chip">
+        <span class="chip-label">${stat.label}</span>
+        <span class="chip-value">${stat.value}</span>
+      </div>
+    `
+      )
+      .join('')
+
+  const overallStatBlocks = [
     { label: 'Seasons', value: totalSeasonsCount },
     { label: 'Active', value: `${firstSeason || '-'}–${lastSeason || '-'}` },
     { label: 'Wins', value: totalWins },
     { label: 'Titles', value: championships },
   ]
 
-  if (seasonResultsSummary) {
-    statBlocks.push(
-      { label: 'Races', value: seasonResultsSummary.races },
-      { label: 'Avg Finish', value: seasonResultsSummary.avgFinish }
-    )
-  }
-
+  const currentSeasonBlocks = []
   if (currentSeason) {
     const constructorLabel = currentSeason.constructors?.join(', ') || '–'
-    statBlocks.push(
+    currentSeasonBlocks.push(
       { label: 'Current Season', value: currentSeason.season },
       { label: 'Constructor', value: constructorLabel },
       { label: 'Standing', value: `P${currentSeason.position}` },
       { label: 'Points', value: currentSeason.points },
       { label: 'Wins (Season)', value: currentSeason.wins }
     )
-  } else {
-    statBlocks.push({ label: 'Wins (Season)', value: seasonResultsSummary?.wins ?? 0 })
+    if (seasonResultsSummary) {
+      currentSeasonBlocks.push({
+        label: 'Avg Finish',
+        value: seasonResultsSummary.avgFinish,
+      })
+    }
+  } else if (seasonResultsSummary) {
+    currentSeasonBlocks.push(
+      { label: 'Races', value: seasonResultsSummary.races },
+      { label: 'Avg Finish', value: seasonResultsSummary.avgFinish }
+    )
   }
 
-  const statHtml = statBlocks
-    .map(
-      (stat) => `
-      <div class="stat-chip">
-        <span class="chip-label">${stat.label}</span>
-        <span class="chip-value">${stat.value}</span>
-      </div>
-    `
-    )
-    .join('')
-
-  const seasonSummaryRows = seasonSummaries.length
-    ? seasonSummaries
-        .map(
-          (summary) => `
-          <div class="summary-row">
-            <div class="summary-season">${summary.season}</div>
-            <div>${summary.races} GP</div>
-            <div>${summary.wins} wins</div>
-            <div>${summary.podiums} podiums</div>
-            <div>${summary.points} pts</div>
-            <div>${summary.avgFinish} avg finish</div>
-          </div>
-        `
-        )
-        .join('')
-    : '<div class="empty-message">No season summaries yet.</div>'
+  const statHtmlSections = [renderChipBlocks(overallStatBlocks)]
+  if (currentSeasonBlocks.length) {
+    statHtmlSections.push('<div class="chip-divider"></div>')
+    statHtmlSections.push(renderChipBlocks(currentSeasonBlocks))
+  }
+  const statHtml = statHtmlSections.join('')
 
   const gpRows = seasonResults.length
     ? seasonResults
@@ -447,11 +470,14 @@ function buildPopupHtml(data) {
         </div>
         <div class="chip-strip">${statHtml}</div>
       </div>
+      <div class="season-timeline">
+        ${seasonTimelineHtml}
+    </div>
       <div class="main-content">
         <div class="content-column">
           <div class="season-section">
-            <div class="section-title">Recent seasons</div>
-          <div class="season-headings">
+            <div class="section-title">All seasons</div>
+      <div class="season-headings">
         <span>Season</span>
         <span>Team(s)</span>
         <span>Finish</span>
@@ -459,26 +485,6 @@ function buildPopupHtml(data) {
         <span>Wins</span>
       </div>
       ${seasonRows || '<div class="season-row">No season data yet.</div>'}
-            <div class="season-footnote">Showing last ${Math.min(
-              MAX_SEASONS_IN_POPUP,
-              seasons.length
-            )} season(s)</div>
-          </div>
-        </div>
-        <div class="content-column">
-          <div class="season-summary">
-            <div class="section-title">Season comparisons</div>
-            <div class="summary-grid">
-              <div class="summary-headings">
-                <span>Season</span>
-                <span>GP</span>
-                <span>Wins</span>
-                <span>Podiums</span>
-                <span>Points</span>
-                <span>Avg finish</span>
-              </div>
-              ${seasonSummaryRows}
-            </div>
           </div>
         </div>
         <div class="content-column">
