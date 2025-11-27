@@ -372,28 +372,30 @@ function buildPopupHtml(data) {
     })
     .join('')
 
-  const timelineSeasons = [...seasons].sort(
-    (a, b) => Number(a.season) - Number(b.season)
-  )
-  const seasonTimelineHtml = timelineSeasons
-    .map((season) => {
-      const driverBadge = season.isChampion
-        ? '<span class="season-badge trophy" title="Driver Champion">🏆</span>'
-        : ''
-      const constructorBadge = season.isConstructorChampion
-        ? '<span class="season-badge constructor" title="Constructor Champion">🏎</span>'
-        : ''
-      return `
+  const timelineSeasons = championSeasons
+    .slice()
+    .sort((a, b) => Number(a.season) - Number(b.season))
+  const seasonTimelineHtml = timelineSeasons.length
+    ? timelineSeasons
+        .map((season) => {
+          const driverBadge = season.isChampion
+            ? '<span class="season-badge trophy" title="Driver Champion">🏆</span>'
+            : ''
+          const constructorBadge = season.isConstructorChampion
+            ? '<span class="season-badge constructor" title="Constructor Champion">🏎</span>'
+            : ''
+          return `
         <span class="season-pill${season.isChampion ? ' driver-champ' : ''}${
-        season.isConstructorChampion ? ' constructor-champ' : ''
-      }">
+            season.isConstructorChampion ? ' constructor-champ' : ''
+          }">
           ${season.season}
           ${driverBadge}
           ${constructorBadge}
         </span>
       `
-    })
-    .join('')
+        })
+        .join('')
+    : '<span class="empty-message">No championship seasons yet.</span>'
 
   const renderChipBlocks = (blocks) =>
     blocks
