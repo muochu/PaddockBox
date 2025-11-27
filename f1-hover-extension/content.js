@@ -223,10 +223,11 @@ function positionPopup() {
   popup.style.transform = 'translate(0, 0)'
 }
 
-function showPopup(content, x, y) {
+function showPopup(content, x, y, { loading = false } = {}) {
   popup.innerHTML = content
   popup.style.display = 'block'
   popup.style.opacity = '1'
+  popup.classList.toggle('loading', Boolean(loading))
 
   // Use requestAnimationFrame to ensure DOM is updated before positioning
   requestAnimationFrame(() => {
@@ -243,6 +244,15 @@ function hidePopup() {
   popup.innerHTML = ''
 }
 
+function buildLoadingMarkup() {
+  return `
+    <div class="loading-state">
+      <div class="loading-spinner"></div>
+      <div class="loading-text">Loading live stats…</div>
+    </div>
+  `
+}
+
 async function handleDriverFocus(target, x, y) {
   const slug = target.dataset.driver
   if (!slug) {
@@ -252,7 +262,7 @@ async function handleDriverFocus(target, x, y) {
 
   activeSlug = slug
   pointerTracking = true
-  showPopup('Loading…', x, y)
+  showPopup(buildLoadingMarkup(), x, y, { loading: true })
 
   try {
     const data = await fetchDriverData(slug)
@@ -312,7 +322,6 @@ function buildPopupHtml(data) {
     driver,
     seasons,
     currentSeason,
-    seasonSummaries = [],
     seasonResults = [],
     seasonResultsSummary,
   } = data
@@ -375,9 +384,9 @@ function buildPopupHtml(data) {
         ? '<span class="season-badge constructor" title="Constructor Champion">🏎</span>'
         : ''
       return `
-        <span class="season-pill${
-          season.isChampion ? ' driver-champ' : ''
-        }${season.isConstructorChampion ? ' constructor-champ' : ''}">
+        <span class="season-pill${season.isChampion ? ' driver-champ' : ''}${
+        season.isConstructorChampion ? ' constructor-champ' : ''
+      }">
           ${season.season}
           ${driverBadge}
           ${constructorBadge}
