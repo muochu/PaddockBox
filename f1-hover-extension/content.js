@@ -385,15 +385,15 @@ function buildPopupHtml(data) {
 
   const seasonRows = seasonsToDisplay.length
     ? seasonsToDisplay
-    .map((season) => {
-      const constructorLabel = season.constructors.join(', ')
-      const driverBadge = season.isChampion
-        ? '<span class="season-icon" title="Driver Champion">🏆</span>'
-        : ''
-      const constructorBadge = season.isConstructorChampion
-        ? '<span class="season-icon constructor" title="Constructor Champion">🏎</span>'
-        : ''
-      return `
+        .map((season) => {
+          const constructorLabel = season.constructors.join(', ')
+          const driverBadge = season.isChampion
+            ? '<span class="season-icon" title="Driver Champion">🏆</span>'
+            : ''
+          const constructorBadge = season.isConstructorChampion
+            ? '<span class="season-icon constructor" title="Constructor Champion">🏎</span>'
+            : ''
+          return `
         <div class="season-row">
           <span class="season-year">
             ${season.season}
@@ -406,8 +406,9 @@ function buildPopupHtml(data) {
           <span class="season-metric">${season.wins} wins</span>
         </div>
       `
-    })
-    .join('')
+        })
+        .join('')
+    : '<div class="season-row">No championship seasons yet.</div>'
 
   const timelineSeasons = championSeasons
     .slice()
