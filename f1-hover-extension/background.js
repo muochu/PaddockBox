@@ -1,6 +1,9 @@
 const CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
 const DRIVERS_LIST_CACHE_TTL_MS = 24 * 60 * 60 * 1000 // 24 hours
-const ERGAST_BASE_URL = 'https://api.jolpi.ca/ergast/f1'
+// Try mirror first, fallback to original Ergast API
+const ERGAST_MIRROR = 'https://api.jolpi.ca/ergast/f1'
+const ERGAST_ORIGINAL = 'http://ergast.com/api/f1'
+const ERGAST_BASE_URL = ERGAST_MIRROR
 const cache = new Map()
 let driversListCache = null
 let driversListExpiresAt = 0
@@ -48,30 +51,24 @@ async function handleDriverRequest(slug) {
     seasonsRes?.MRData?.SeasonTable?.Seasons?.map((season) => season.season) ??
     []
 
-  // Fetch standings for all seasons (with better error handling)
-  const seasonsData = await fetchSeasonStandings(slug, allSeasonsList)
+  // Filter out future seasons and only fetch seasons that likely have data
+  const currentYear = new Date().getFullYear()
+  const validSeasons = allSeasonsList.filter(
+    (season) => Number(season) <= currentYear && Number(season) >= 1950
+  )
 
-  // Create a complete seasons array including failed fetches
+  // Fetch standings for valid seasons only (with better error handling)
+  const seasonsData = await fetchSeasonStandings(slug, validSeasons)
+
+  // Only include seasons with actual data (no placeholders)
   const seasonsMap = new Map()
   seasonsData.forEach((s) => seasonsMap.set(s.season, s))
 
-  // Fill in missing seasons with placeholder data
-  const completeSeasons = allSeasonsList.map((season) => {
-    if (seasonsMap.has(season)) {
-      return seasonsMap.get(season)
-    }
-    // Return placeholder for failed fetches
-    return {
-      season,
-      position: '?',
-      points: '0',
-      wins: 0,
-      constructors: [],
-      _incomplete: true,
-      isChampion: false,
-      isConstructorChampion: false,
-    }
-  })
+  // Only return seasons that have actual standings data
+  // This prevents showing "P? 0 pts" for seasons without data
+  const completeSeasons = validSeasons
+    .map((season) => seasonsMap.get(season))
+    .filter(Boolean) // Remove any null/undefined entries
 
   const orderedSeasons = completeSeasons.sort(
     (a, b) => Number(a.season) - Number(b.season)
@@ -121,7 +118,8 @@ async function fetchSeasonStandings(slug, seasons) {
         const standing =
           driverRes?.MRData?.StandingsTable?.StandingsLists?.[0]
             ?.DriverStandings?.[0]
-        if (!standing) {
+        if (!standing || !standing.position || standing.position === '?') {
+          // No valid standing data for this season
           return null
         }
         const championConstructor =
@@ -403,7 +401,7 @@ async function handleDriversListRequest() {
   return list
 }
 
-async function fetchJson(url) {
+async function fetchJson(url, retryWithOriginal = true) {
   console.log('F1 Hover Stats background: Fetching', url)
   try {
     const response = await fetch(url, { cache: 'no-store' })
@@ -423,6 +421,23 @@ async function fetchJson(url) {
     return data
   } catch (error) {
     console.error('F1 Hover Stats background: Fetch error for', url, ':', error)
+    
+    // If using mirror and it fails, try original Ergast API as fallback
+    if (retryWithOriginal && url.includes(ERGAST_MIRROR)) {
+      const fallbackUrl = url.replace(ERGAST_MIRROR, ERGAST_ORIGINAL)
+      console.log('F1 Hover Stats background: Trying fallback URL', fallbackUrl)
+      try {
+        const response = await fetch(fallbackUrl, { cache: 'no-store' })
+        if (response.ok) {
+          const data = await response.json()
+          console.log('F1 Hover Stats background: Fallback successful')
+          return data
+        }
+      } catch (fallbackError) {
+        console.error('F1 Hover Stats background: Fallback also failed:', fallbackError)
+      }
+    }
+    
     throw error
   }
 }
