@@ -274,7 +274,20 @@ async function handleDriverFocus(target, x, y) {
   } catch (error) {
     console.error('F1 Hover Stats:', error)
     if (activeSlug === slug) {
-      showPopup('<strong>Unable to load driver data.</strong>', x, y)
+      const errorMessage = error?.message || 'Unknown error'
+      showPopup(
+        `<div class="error-message">
+          <strong>Unable to load driver data.</strong>
+          <div style="font-size: 11px; color: rgba(255,255,255,0.6); margin-top: 8px;">
+            ${errorMessage}
+          </div>
+          <div style="font-size: 10px; color: rgba(255,255,255,0.4); margin-top: 4px;">
+            Check console for details
+          </div>
+        </div>`,
+        x,
+        y
+      )
     }
   }
 }
@@ -296,9 +309,18 @@ function requestDriverDataFromBackground(slug) {
       return
     }
 
+    // Add timeout to prevent hanging
+    const timeout = setTimeout(() => {
+      reject(new Error('Request timeout: Background worker did not respond'))
+    }, 30000) // 30 second timeout
+
     chrome.runtime.sendMessage({ type: 'fetch-driver', slug }, (response) => {
+      clearTimeout(timeout)
+      
       if (chrome.runtime.lastError) {
-        reject(new Error(chrome.runtime.lastError.message))
+        const errorMsg = chrome.runtime.lastError.message
+        console.error('F1 Hover Stats: Background error:', errorMsg)
+        reject(new Error(`Background worker error: ${errorMsg}`))
         return
       }
 
@@ -308,7 +330,13 @@ function requestDriverDataFromBackground(slug) {
       }
 
       if (response.error) {
+        console.error('F1 Hover Stats: API error:', response.error)
         reject(new Error(response.error))
+        return
+      }
+
+      if (!response.data) {
+        reject(new Error('No data in response'))
         return
       }
 

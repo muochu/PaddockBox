@@ -11,12 +11,16 @@ let driversListExpiresAt = 0
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type === 'fetch-driver') {
     handleDriverRequest(message.slug)
-      .then((data) => sendResponse({ data }))
-      .catch((error) => {
-        console.error('F1 Hover Stats background:', error)
-        sendResponse({ error: error.message || 'Unknown error' })
+      .then((data) => {
+        console.log('F1 Hover Stats background: Successfully fetched data for', message.slug)
+        sendResponse({ data })
       })
-    return true
+      .catch((error) => {
+        console.error('F1 Hover Stats background: Error fetching driver data:', error)
+        const errorMessage = error?.message || error?.toString() || 'Unknown error'
+        sendResponse({ error: errorMessage })
+      })
+    return true // Indicates we will send a response asynchronously
   }
 
   if (message?.type === 'fetch-drivers-list') {
@@ -41,15 +45,47 @@ async function handleDriverRequest(slug) {
     return cached.data
   }
 
-  const [driverInfoRes, seasonsRes] = await Promise.all([
-    fetchJson(`${ERGAST_BASE_URL}/drivers/${slug}/`),
-    fetchJson(`${ERGAST_BASE_URL}/drivers/${slug}/seasons/`),
-  ])
+  console.log(`F1 Hover Stats background: Fetching data for driver: ${slug}`)
+
+  let driverInfoRes, seasonsRes
+  try {
+    ;[driverInfoRes, seasonsRes] = await Promise.all([
+      fetchJson(`${ERGAST_BASE_URL}/drivers/${slug}/`),
+      fetchJson(`${ERGAST_BASE_URL}/drivers/${slug}/seasons/`),
+    ])
+  } catch (error) {
+    console.error(
+      `F1 Hover Stats background: Failed to fetch driver info or seasons for ${slug}:`,
+      error
+    )
+    throw new Error(
+      `Failed to fetch driver data: ${error.message || 'Network error'}`
+    )
+  }
 
   const driver = driverInfoRes?.MRData?.DriverTable?.Drivers?.[0]
+  if (!driver) {
+    throw new Error(`Driver not found: ${slug}. Check if the driver ID is correct.`)
+  }
+
   const allSeasonsList =
     seasonsRes?.MRData?.SeasonTable?.Seasons?.map((season) => season.season) ??
     []
+
+  if (allSeasonsList.length === 0) {
+    console.warn(
+      `F1 Hover Stats background: No seasons found for ${slug}, using driver info only`
+    )
+    // Return minimal data if no seasons found
+    return {
+      driver,
+      seasons: [],
+      currentSeason: null,
+      seasonSummaries: [],
+      seasonResults: [],
+      seasonResultsSummary: null,
+    }
+  }
 
   // Filter out future seasons and only fetch seasons that likely have data
   const currentYear = new Date().getFullYear()
@@ -421,7 +457,7 @@ async function fetchJson(url, retryWithOriginal = true) {
     return data
   } catch (error) {
     console.error('F1 Hover Stats background: Fetch error for', url, ':', error)
-    
+
     // If using mirror and it fails, try original Ergast API as fallback
     if (retryWithOriginal && url.includes(ERGAST_MIRROR)) {
       const fallbackUrl = url.replace(ERGAST_MIRROR, ERGAST_ORIGINAL)
@@ -434,10 +470,13 @@ async function fetchJson(url, retryWithOriginal = true) {
           return data
         }
       } catch (fallbackError) {
-        console.error('F1 Hover Stats background: Fallback also failed:', fallbackError)
+        console.error(
+          'F1 Hover Stats background: Fallback also failed:',
+          fallbackError
+        )
       }
     }
-    
+
     throw error
   }
 }
