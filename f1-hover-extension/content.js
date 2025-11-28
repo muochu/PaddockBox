@@ -316,7 +316,7 @@ function requestDriverDataFromBackground(slug) {
 
     chrome.runtime.sendMessage({ type: 'fetch-driver', slug }, (response) => {
       clearTimeout(timeout)
-      
+
       if (chrome.runtime.lastError) {
         const errorMsg = chrome.runtime.lastError.message
         console.error('F1 Hover Stats: Background error:', errorMsg)
@@ -373,9 +373,18 @@ function buildPopupHtml(data) {
   const totalSeasonsCount = seasons.length
   const lastSeason = completeSeasons.at(-1)?.season || seasons.at(-1)?.season
   const firstSeason = seasons[0]?.season
-  const seasonsToDisplay = [...seasons].reverse()
+  
+  // Filter to only championship seasons (driver or constructor champion)
+  const championSeasons = completeSeasons.filter(
+    (season) => season.isChampion || season.isConstructorChampion
+  )
+  
+  const seasonsToDisplay = championSeasons.length
+    ? [...championSeasons].reverse()
+    : []
 
-  const seasonRows = seasonsToDisplay
+  const seasonRows = seasonsToDisplay.length
+    ? seasonsToDisplay
     .map((season) => {
       const constructorLabel = season.constructors.join(', ')
       const driverBadge = season.isChampion
