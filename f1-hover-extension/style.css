@@ -398,6 +398,18 @@
   margin-top: 1px;
 }
 
+.error-message {
+  padding: 16px;
+  text-align: center;
+  color: #f5f5f5;
+}
+
+.error-message strong {
+  display: block;
+  margin-bottom: 8px;
+  color: #ff6b6b;
+}
+
 .empty-message {
   font-size: 12px;
   color: rgba(255, 255, 255, 0.5);
