@@ -193,14 +193,24 @@ async function fetchSeasonStandings(slug, seasons) {
   const fetchWithRetry = async (season, retries = 1) => {
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
-        // Fetch driver standings first (required)
+        // Fetch FINAL driver standings for the season (not current/ongoing)
+        // Using the season-specific endpoint ensures we get final standings for completed seasons
         const driverRes = await fetchJson(
-          `${ERGAST_BASE_URL}/${season}/drivers/${slug}/driverstandings/`
+          `${ERGAST_BASE_URL}/${season}/driverStandings.json?limit=1000`
         )
 
-        const standing =
+        const standingsList =
           driverRes?.MRData?.StandingsTable?.StandingsLists?.[0]
-            ?.DriverStandings?.[0]
+        if (!standingsList) {
+          return null
+        }
+
+        // Find this driver's standing in the final standings
+        const driverStandings = standingsList.DriverStandings || []
+        const standing = driverStandings.find(
+          (ds) => ds.Driver.driverId === slug
+        )
+
         if (!standing || !standing.position || standing.position === '?') {
           return null
         }
@@ -209,18 +219,34 @@ async function fetchSeasonStandings(slug, seasons) {
           (team) => team.name
         )
 
-        // Only fetch constructor standings for recent seasons (last 5) to save time
+        // Check if season is complete by checking if we have final standings
+        // For completed seasons, the standings list will have all drivers
+        // For current/ongoing season, we should only mark as champion if season is actually finished
         const currentYear = new Date().getFullYear()
+        const isCurrentSeason = Number(season) === currentYear
+        const isSeasonComplete = !isCurrentSeason || standingsList.round === standingsList.totalRounds
+
+        // Only mark as champion if position is 1 AND season is complete
+        // This ensures we don't mark someone as champion mid-season
+        const isChampion = Number(standing.position) === 1 && isSeasonComplete
+
+        // Only fetch constructor standings for recent seasons (last 5) to save time
         let isConstructorChampion = false
         if (Number(season) >= currentYear - 5) {
           try {
             const constructorRes = await fetchJson(
-              `${ERGAST_BASE_URL}/${season}/constructorstandings/`
+              `${ERGAST_BASE_URL}/${season}/constructorStandings.json?limit=1000`
             )
-            const championConstructor =
+            const constructorStandingsList =
               constructorRes?.MRData?.StandingsTable?.StandingsLists?.[0]
-                ?.ConstructorStandings?.[0]?.Constructor?.name
-            isConstructorChampion = constructors.includes(championConstructor)
+            if (constructorStandingsList) {
+              const championConstructor =
+                constructorStandingsList.ConstructorStandings?.[0]?.Constructor
+                  ?.name
+              isConstructorChampion =
+                constructors.includes(championConstructor) &&
+                (isSeasonComplete || !isCurrentSeason)
+            }
           } catch (err) {
             // Ignore constructor fetch errors for older seasons
             console.warn(`Skipping constructor data for ${season}`)
@@ -233,7 +259,7 @@ async function fetchSeasonStandings(slug, seasons) {
           points: standing.points,
           wins: Number(standing.wins) || 0,
           constructors,
-          isChampion: Number(standing.position) === 1,
+          isChampion,
           isConstructorChampion,
         }
       } catch (error) {
