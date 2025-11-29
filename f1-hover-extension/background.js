@@ -160,7 +160,7 @@ async function fetchSeasonStandings(slug, seasons) {
   const fetchWithRetry = async (season, retries = 1) => {
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
-        // Fetch driver standings first (required), constructor only for recent seasons
+        // Fetch driver standings first (required)
         const driverRes = await fetchJson(
           `${ERGAST_BASE_URL}/${season}/drivers/${slug}/driverstandings/`
         )
@@ -171,6 +171,10 @@ async function fetchSeasonStandings(slug, seasons) {
         if (!standing || !standing.position || standing.position === '?') {
           return null
         }
+        
+        const constructors = (standing.Constructors || []).map(
+          (team) => team.name
+        )
         
         // Only fetch constructor standings for recent seasons (last 5) to save time
         const currentYear = new Date().getFullYear()
@@ -183,9 +187,6 @@ async function fetchSeasonStandings(slug, seasons) {
             const championConstructor =
               constructorRes?.MRData?.StandingsTable?.StandingsLists?.[0]
                 ?.ConstructorStandings?.[0]?.Constructor?.name
-            const constructors = (standing.Constructors || []).map(
-              (team) => team.name
-            )
             isConstructorChampion = constructors.includes(championConstructor)
           } catch (err) {
             // Ignore constructor fetch errors for older seasons
@@ -193,23 +194,6 @@ async function fetchSeasonStandings(slug, seasons) {
           }
         }
         
-        const constructors = (standing.Constructors || []).map(
-          (team) => team.name
-        )
-        const standing =
-          driverRes?.MRData?.StandingsTable?.StandingsLists?.[0]
-            ?.DriverStandings?.[0]
-        if (!standing || !standing.position || standing.position === '?') {
-          // No valid standing data for this season
-          return null
-        }
-        const championConstructor =
-          constructorRes?.MRData?.StandingsTable?.StandingsLists?.[0]
-            ?.ConstructorStandings?.[0]?.Constructor?.name
-        const constructors = (standing.Constructors || []).map(
-          (team) => team.name
-        )
-        const isConstructorChampion = constructors.includes(championConstructor)
         return {
           season,
           position: standing.position,
