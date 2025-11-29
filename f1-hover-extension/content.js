@@ -318,29 +318,21 @@ async function handleDriverFocus(target, x, y) {
       const isRateLimited =
         errorMessage.includes('Rate limited') || errorMessage.includes('429')
 
-      showPopup(
-        `<div class="error-message">
-          <strong>${
-            isRateLimited ? 'Rate Limited' : 'Unable to load driver data'
-          }</strong>
-          <div style="font-size: 11px; color: rgba(255,255,255,0.6); margin-top: 8px;">
-            ${
-              isRateLimited
-                ? 'Too many requests. Please wait 30 seconds and try again. Data is cached for faster loading.'
-                : errorMessage
-            }
-          </div>
-          <div style="font-size: 10px; color: rgba(255,255,255,0.4); margin-top: 4px;">
-            ${
-              isRateLimited
-                ? 'Tip: Hover over the same driver again in a moment.'
-                : 'Check console for details'
-            }
-          </div>
-        </div>`,
-        x,
-        y
-      )
+      const rateLimitMessage = isRateLimited
+        ? `<div class="error-message">
+          <strong>Rate Limited</strong>
+          <br/>
+          Too many requests. Please wait 30 seconds and try again. Data is cached for faster loading.
+          <br/><br/>
+          <em>Tip: Hover over the same driver again in a moment.</em>
+        </div>`
+        : `<div class="error-message">
+          <strong>Unable to load driver data</strong>
+          <br/>
+          ${errorMessage}
+        </div>`
+
+      showPopup(rateLimitMessage, x, y)
     }
   }
 }
