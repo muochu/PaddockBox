@@ -382,12 +382,14 @@ function buildPopupHtml(data, slug = '') {
 
   // Filter out incomplete seasons for calculations
   const completeSeasons = seasons.filter((s) => !s._incomplete)
+  // Calculate total wins from all complete seasons
   const totalWins = completeSeasons.reduce(
-    (sum, season) => sum + (season.wins || 0),
+    (sum, season) => sum + (Number(season.wins) || 0),
     0
   )
+  // Count championships - only from seasons where driver was champion (isChampion flag)
   const championships = completeSeasons.filter(
-    (season) => Number(season.position) === 1
+    (season) => season.isChampion === true
   ).length
 
   // Use totalSeasonsCount from data if available, otherwise use seasons.length
