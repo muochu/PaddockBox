@@ -1,7 +1,7 @@
-const CACHE_TTL_MS = 30 * 60 * 1000 // 30 minutes (increased to reduce API calls)
+const CACHE_TTL_MS = 10 * 60 * 1000 // 10 minutes (balanced cache time)
 const DRIVERS_LIST_CACHE_TTL_MS = 24 * 60 * 60 * 1000 // 24 hours
-const RATE_LIMIT_DELAY_MS = 500 // Delay between requests to avoid rate limiting (increased)
-const MAX_RETRIES = 3
+const RATE_LIMIT_DELAY_MS = 300 // Delay between requests (reduced from 500)
+const MAX_RETRIES = 2 // Reduced retries to fail faster
 // Try mirror first, fallback to original Ergast API
 const ERGAST_MIRROR = 'https://api.jolpi.ca/ergast/f1'
 const ERGAST_ORIGINAL = 'http://ergast.com/api/f1'
@@ -157,14 +157,13 @@ async function fetchSeasonStandings(slug, seasons) {
   const fetchWithRetry = async (season, retries = 2) => {
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
-        // Fetch sequentially to avoid rate limits
-        const driverRes = await fetchJson(
-          `${ERGAST_BASE_URL}/${season}/drivers/${slug}/driverstandings/`
-        )
-        await new Promise((resolve) => setTimeout(resolve, RATE_LIMIT_DELAY_MS))
-        const constructorRes = await fetchJson(
-          `${ERGAST_BASE_URL}/${season}/constructorstandings/`
-        )
+        // Fetch in parallel but with rate limiting handled in fetchJson
+        const [driverRes, constructorRes] = await Promise.all([
+          fetchJson(
+            `${ERGAST_BASE_URL}/${season}/drivers/${slug}/driverstandings/`
+          ),
+          fetchJson(`${ERGAST_BASE_URL}/${season}/constructorstandings/`),
+        ])
         const standing =
           driverRes?.MRData?.StandingsTable?.StandingsLists?.[0]
             ?.DriverStandings?.[0]
@@ -214,7 +213,9 @@ async function fetchSeasonStandings(slug, seasons) {
     }
     // Add delay between each season request (longer delay to avoid rate limits)
     if (i < seasons.length - 1) {
-      await new Promise((resolve) => setTimeout(resolve, RATE_LIMIT_DELAY_MS * 2))
+      await new Promise((resolve) =>
+        setTimeout(resolve, RATE_LIMIT_DELAY_MS * 2)
+      )
     }
   }
 
@@ -485,12 +486,6 @@ async function fetchJson(url, retryWithOriginal = true, retryCount = 0) {
     const waitTime = RATE_LIMIT_DELAY_MS - timeSinceLastRequest
     await new Promise((resolve) => setTimeout(resolve, waitTime))
   }
-
-  // Add delay to avoid rate limiting (only on first attempt)
-  if (retryCount === 0) {
-    await new Promise((resolve) => setTimeout(resolve, RATE_LIMIT_DELAY_MS))
-  }
-
   lastRequestTime = Date.now()
 
   try {
