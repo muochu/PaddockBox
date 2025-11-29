@@ -269,7 +269,7 @@ async function handleDriverFocus(target, x, y) {
     if (activeSlug !== slug) {
       return
     }
-    const html = buildPopupHtml(data)
+    const html = buildPopupHtml(data, slug)
     showPopup(html, x, y)
     
     // Attach event listener to "Show more" button if it exists
@@ -290,7 +290,7 @@ async function handleDriverFocus(target, x, y) {
             const fullData = await requestDriverDataFromBackground(btnSlug, true) // Pass loadAllSeasons flag
             
             // Rebuild popup with all seasons
-            const fullHtml = buildPopupHtml(fullData)
+            const fullHtml = buildPopupHtml(fullData, btnSlug)
             popup.innerHTML = fullHtml
             positionPopup()
             
@@ -398,7 +398,7 @@ function requestDriverDataFromBackground(slug, loadAllSeasons = false) {
   })
 }
 
-function buildPopupHtml(data) {
+function buildPopupHtml(data, slug = '') {
   const {
     driver,
     seasons,
@@ -426,7 +426,7 @@ function buildPopupHtml(data) {
   ).length
 
   // Use all seasons (including incomplete) for count, but complete ones for display
-  const totalSeasonsCount = seasons.length
+  const totalSeasonsCount = totalSeasonsCount || seasons.length
   const lastSeason = completeSeasons.at(-1)?.season || seasons.at(-1)?.season
   const firstSeason = seasons[0]?.season
 
@@ -471,7 +471,7 @@ function buildPopupHtml(data) {
   const showMoreButton = hasMoreSeasons && !allSeasonsLoaded
     ? `<div class="show-more-container">
         <button class="show-more-btn" data-driver-slug="${driver.driverId || slug || ''}">
-          Show ${totalSeasonsCount - seasons.length} more season${totalSeasonsCount - seasons.length > 1 ? 's' : ''}
+          Show ${displayTotalSeasonsCount - seasons.length} more season${displayTotalSeasonsCount - seasons.length > 1 ? 's' : ''}
         </button>
       </div>`
     : ''
