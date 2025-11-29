@@ -256,7 +256,7 @@ async function fetchSeasonResultsData(slug, season) {
 
   for (const url of urls) {
     try {
-      const res = await fetchJson(url, false) // Don't retry with original for results
+      const res = await fetchJson(url) // Try with fallback
       const races = res?.MRData?.RaceTable?.Races ?? []
       
       if (races.length > 0) {
