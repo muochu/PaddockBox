@@ -425,8 +425,8 @@ function buildPopupHtml(data, slug = '') {
     (season) => Number(season.position) === 1
   ).length
 
-  // Use all seasons (including incomplete) for count, but complete ones for display
-  const totalSeasonsCount = totalSeasonsCount || seasons.length
+  // Use totalSeasonsCount from data if available, otherwise use seasons.length
+  const displayTotalSeasonsCount = totalSeasonsCount > 0 ? totalSeasonsCount : seasons.length
   const lastSeason = completeSeasons.at(-1)?.season || seasons.at(-1)?.season
   const firstSeason = seasons[0]?.season
 
