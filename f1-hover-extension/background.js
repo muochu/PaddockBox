@@ -480,8 +480,14 @@ async function handleDriversListRequest() {
   return list
 }
 
-async function fetchJson(url, retryWithOriginal = true) {
+async function fetchJson(url, retryWithOriginal = true, retryCount = 0) {
   console.log('F1 Hover Stats background: Fetching', url)
+  
+  // Add delay to avoid rate limiting
+  if (retryCount === 0) {
+    await new Promise((resolve) => setTimeout(resolve, RATE_LIMIT_DELAY_MS))
+  }
+  
   try {
     const response = await fetch(url, { cache: 'no-store' })
     console.log(
@@ -490,6 +496,27 @@ async function fetchJson(url, retryWithOriginal = true) {
       'for',
       url
     )
+    
+    // Handle rate limiting with exponential backoff
+    if (response.status === 429) {
+      const retryAfter = response.headers.get('Retry-After')
+      const waitTime = retryAfter
+        ? Number(retryAfter) * 1000
+        : Math.min(1000 * Math.pow(2, retryCount), 10000) // Exponential backoff, max 10s
+      
+      if (retryCount < MAX_RETRIES) {
+        console.warn(
+          `F1 Hover Stats background: Rate limited (429), waiting ${waitTime}ms before retry ${retryCount + 1}/${MAX_RETRIES}`
+        )
+        await new Promise((resolve) => setTimeout(resolve, waitTime))
+        return fetchJson(url, retryWithOriginal, retryCount + 1)
+      } else {
+        throw new Error(
+          `Rate limited (429): Too many requests. Please wait a moment and try again.`
+        )
+      }
+    }
+    
     if (!response.ok) {
       throw new Error(
         `Request failed: ${response.status} ${response.statusText}`
@@ -499,13 +526,19 @@ async function fetchJson(url, retryWithOriginal = true) {
     console.log('F1 Hover Stats background: Successfully fetched', url)
     return data
   } catch (error) {
+    // Don't retry with fallback if we're already retrying due to rate limit
+    if (error.message?.includes('Rate limited')) {
+      throw error
+    }
+    
     console.error('F1 Hover Stats background: Fetch error for', url, ':', error)
 
     // If using mirror and it fails, try original Ergast API as fallback
-    if (retryWithOriginal && url.includes(ERGAST_MIRROR)) {
+    if (retryWithOriginal && url.includes(ERGAST_MIRROR) && retryCount === 0) {
       const fallbackUrl = url.replace(ERGAST_MIRROR, ERGAST_ORIGINAL)
       console.log('F1 Hover Stats background: Trying fallback URL', fallbackUrl)
       try {
+        await new Promise((resolve) => setTimeout(resolve, RATE_LIMIT_DELAY_MS))
         const response = await fetch(fallbackUrl, { cache: 'no-store' })
         if (response.ok) {
           const data = await response.json()
