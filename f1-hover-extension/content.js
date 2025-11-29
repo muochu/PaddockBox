@@ -409,7 +409,7 @@ function buildPopupHtml(data) {
       `
         })
         .join('')
-    : '<div class="season-row">No championship seasons yet.</div>'
+    : '<div class="season-row">No season data available yet.</div>'
 
   const timelineSeasons = championSeasons
     .slice()
