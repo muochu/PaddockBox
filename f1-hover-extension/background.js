@@ -13,7 +13,7 @@ let lastRequestTime = 0
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type === 'fetch-driver') {
-    handleDriverRequest(message.slug)
+    handleDriverRequest(message.slug, message.loadAllSeasons)
       .then((data) => {
         console.log(
           'F1 Hover Stats background: Successfully fetched data for',
