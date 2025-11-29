@@ -373,12 +373,12 @@ function buildPopupHtml(data) {
   const totalSeasonsCount = seasons.length
   const lastSeason = completeSeasons.at(-1)?.season || seasons.at(-1)?.season
   const firstSeason = seasons[0]?.season
-  
+
   // Filter to only championship seasons (driver or constructor champion) for timeline
   const championSeasons = completeSeasons.filter(
     (season) => season.isChampion || season.isConstructorChampion
   )
-  
+
   // Show ALL seasons in the table, not just championship seasons
   const seasonsToDisplay = completeSeasons.length
     ? [...completeSeasons].reverse()
@@ -764,6 +764,22 @@ function init() {
   document.addEventListener('pointermove', handlePointerMove, true)
   document.addEventListener('focusin', handleFocusIn, true)
   document.addEventListener('focusout', handleFocusOut, true)
+  
+  // Close popup when clicking outside of it
+  document.addEventListener('click', (event) => {
+    const target = event.target
+    // Don't close if clicking on a driver name or inside the popup
+    if (
+      target.closest?.(`.${DRIVER_CLASS}`) ||
+      target.closest?.(`.${POPUP_CLASS}`)
+    ) {
+      return
+    }
+    // Close the popup if it's visible
+    if (popup.style.display !== 'none') {
+      hidePopup()
+    }
+  }, true)
 }
 
 // Ensure we wait for the page to be ready

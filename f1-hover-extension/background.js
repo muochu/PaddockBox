@@ -12,12 +12,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type === 'fetch-driver') {
     handleDriverRequest(message.slug)
       .then((data) => {
-        console.log('F1 Hover Stats background: Successfully fetched data for', message.slug)
+        console.log(
+          'F1 Hover Stats background: Successfully fetched data for',
+          message.slug
+        )
         sendResponse({ data })
       })
       .catch((error) => {
-        console.error('F1 Hover Stats background: Error fetching driver data:', error)
-        const errorMessage = error?.message || error?.toString() || 'Unknown error'
+        console.error(
+          'F1 Hover Stats background: Error fetching driver data:',
+          error
+        )
+        const errorMessage =
+          error?.message || error?.toString() || 'Unknown error'
         sendResponse({ error: errorMessage })
       })
     return true // Indicates we will send a response asynchronously
@@ -65,7 +72,9 @@ async function handleDriverRequest(slug) {
 
   const driver = driverInfoRes?.MRData?.DriverTable?.Drivers?.[0]
   if (!driver) {
-    throw new Error(`Driver not found: ${slug}. Check if the driver ID is correct.`)
+    throw new Error(
+      `Driver not found: ${slug}. Check if the driver ID is correct.`
+    )
   }
 
   const allSeasonsList =
@@ -234,44 +243,64 @@ async function fetchCurrentSeasonSnapshot(slug, season) {
 }
 
 async function fetchSeasonResultsData(slug, season) {
-  try {
-    const res = await fetchJson(
-      `${ERGAST_BASE_URL}/${season}/drivers/${slug}/results.json?limit=500`
-    )
-    const races = res?.MRData?.RaceTable?.Races ?? []
-    const parsed = races
-      .map((race) => {
-        const result = race.Results?.[0]
-        if (!result) {
-          return null
-        }
-        return {
-          raceName: race.raceName,
-          circuit: race.Circuit?.circuitName,
-          date: race.date,
-          position: result.position,
-          positionText: result.positionText,
-          points: Number(result.points) || 0,
-          status: result.status,
-          grid: result.grid,
-          laps: result.laps,
-        }
-      })
-      .filter(Boolean)
-
-    const summary = summarizeSeason(parsed)
-
-    return {
-      races: parsed,
-      summary,
-    }
-  } catch (error) {
-    console.warn(
-      `F1 Hover Stats background: Failed to fetch season results for ${season}/${slug}`,
-      error
-    )
-    return { races: [], summary: null }
+  // Try multiple endpoints for better reliability
+  const currentYear = new Date().getFullYear()
+  const urls = []
+  
+  if (Number(season) === currentYear) {
+    // For current season, try current endpoint first
+    urls.push(`${ERGAST_BASE_URL}/current/drivers/${slug}/results.json?limit=500`)
   }
+  // Always try the specific season endpoint
+  urls.push(`${ERGAST_BASE_URL}/${season}/drivers/${slug}/results.json?limit=500`)
+
+  for (const url of urls) {
+    try {
+      const res = await fetchJson(url, false) // Don't retry with original for results
+      const races = res?.MRData?.RaceTable?.Races ?? []
+      
+      if (races.length > 0) {
+        const parsed = races
+          .map((race) => {
+            const result = race.Results?.[0]
+            if (!result) {
+              return null
+            }
+            return {
+              raceName: race.raceName,
+              circuit: race.Circuit?.circuitName,
+              date: race.date,
+              position: result.position,
+              positionText: result.positionText,
+              points: Number(result.points) || 0,
+              status: result.status,
+              grid: result.grid,
+              laps: result.laps,
+            }
+          })
+          .filter(Boolean)
+
+        const summary = summarizeSeason(parsed)
+
+        return {
+          races: parsed,
+          summary,
+        }
+      }
+    } catch (error) {
+      console.warn(
+        `F1 Hover Stats background: Failed to fetch from ${url}:`,
+        error.message
+      )
+      // Continue to next URL
+    }
+  }
+
+  // If all URLs failed, return empty
+  console.warn(
+    `F1 Hover Stats background: All attempts failed for season results ${season}/${slug}`
+  )
+  return { races: [], summary: null }
 }
 
 async function fetchSeasonSummaries(slug, seasons) {
