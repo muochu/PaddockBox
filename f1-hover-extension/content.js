@@ -271,19 +271,20 @@ async function handleDriverFocus(target, x, y) {
     }
     const html = buildPopupHtml(data, slug)
     showPopup(html, x, y)
-
-    // Attach event listener to "Show more" button if it exists
+    
+    // Attach event listeners
     setTimeout(() => {
+      // "Show more" button
       const showMoreBtn = popup.querySelector('.show-more-btn')
       if (showMoreBtn) {
         showMoreBtn.addEventListener('click', async (e) => {
           e.stopPropagation()
           const btnSlug = showMoreBtn.dataset.driverSlug
           if (!btnSlug) return
-
+          
           showMoreBtn.textContent = 'Loading...'
           showMoreBtn.disabled = true
-
+          
           try {
             // Clear cache and fetch all seasons
             driverDataCache.delete(btnSlug)
@@ -291,17 +292,14 @@ async function handleDriverFocus(target, x, y) {
               btnSlug,
               true
             ) // Pass loadAllSeasons flag
-
+            
             // Rebuild popup with all seasons
             const fullHtml = buildPopupHtml(fullData, btnSlug)
             popup.innerHTML = fullHtml
             positionPopup()
-
-            // Re-attach event listener if button still exists
-            const newBtn = popup.querySelector('.show-more-btn')
-            if (newBtn) {
-              newBtn.addEventListener('click', arguments.callee)
-            }
+            
+            // Re-attach event listeners
+            attachPopupEventListeners(btnSlug)
           } catch (error) {
             console.error('Failed to load more seasons:', error)
             showMoreBtn.textContent = 'Error - Try again'
@@ -309,6 +307,9 @@ async function handleDriverFocus(target, x, y) {
           }
         })
       }
+      
+      // Season year click handlers
+      attachSeasonClickHandlers(slug, data)
     }, 100)
   } catch (error) {
     console.error('F1 Hover Stats:', error)
@@ -459,7 +460,7 @@ function buildPopupHtml(data, slug = '') {
             : ''
           return `
         <div class="season-row">
-          <span class="season-year">
+          <span class="season-year clickable-season" data-season="${season.season}" data-driver-slug="${slug}">
             ${season.season}
             ${driverBadge}
             ${constructorBadge}
@@ -593,7 +594,7 @@ function buildPopupHtml(data, slug = '') {
             <span class="result-meta">${formatDate(race.date)}</span>
           </div>
           <div class="gp-metrics">
-            <span>P${race.positionText}</span>
+            <span>P${race.positionText}${Number(race.position) === 1 ? ' 🏁' : ''}</span>
             <span>${race.points} pts</span>
             <span>Grid ${race.grid}</span>
             <span>${race.status}</span>

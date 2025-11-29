@@ -42,6 +42,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       })
     return true
   }
+
+  if (message?.type === 'fetch-season-results') {
+    fetchSeasonResultsData(message.slug, message.season)
+      .then((data) => sendResponse({ data }))
+      .catch((error) => {
+        console.error('F1 Hover Stats background: Error fetching season results:', error)
+        sendResponse({ error: error.message || 'Unknown error' })
+      })
+    return true
+  }
 })
 
 async function handleDriverRequest(slug, loadAllSeasons = false) {
@@ -224,7 +234,8 @@ async function fetchSeasonStandings(slug, seasons) {
         // For current/ongoing season, we should only mark as champion if season is actually finished
         const currentYear = new Date().getFullYear()
         const isCurrentSeason = Number(season) === currentYear
-        const isSeasonComplete = !isCurrentSeason || standingsList.round === standingsList.totalRounds
+        const isSeasonComplete =
+          !isCurrentSeason || standingsList.round === standingsList.totalRounds
 
         // Only mark as champion if position is 1 AND season is complete
         // This ensures we don't mark someone as champion mid-season
