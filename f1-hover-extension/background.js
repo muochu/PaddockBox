@@ -1,7 +1,7 @@
-const CACHE_TTL_MS = 10 * 60 * 1000 // 10 minutes (balanced cache time)
+const CACHE_TTL_MS = 10 * 60 * 1000 // 10 minutes
 const DRIVERS_LIST_CACHE_TTL_MS = 24 * 60 * 60 * 1000 // 24 hours
-const RATE_LIMIT_DELAY_MS = 300 // Delay between requests (reduced from 500)
-const MAX_RETRIES = 2 // Reduced retries to fail faster
+const RATE_LIMIT_DELAY_MS = 150 // Minimal delay between requests
+const MAX_RETRIES = 1 // Fast fail on errors
 // Try mirror first, fallback to original Ergast API
 const ERGAST_MIRROR = 'https://api.jolpi.ca/ergast/f1'
 const ERGAST_ORIGINAL = 'http://ergast.com/api/f1'
@@ -105,8 +105,8 @@ async function handleDriverRequest(slug) {
     (season) => Number(season) <= currentYear && Number(season) >= 1950
   )
 
-  // Limit to most recent 15 seasons to avoid too many API calls
-  const seasonsToFetch = validSeasons.slice(-15)
+  // Limit to most recent 10 seasons for faster loading
+  const seasonsToFetch = validSeasons.slice(-10)
 
   // Fetch standings for limited seasons (with better error handling)
   const seasonsData = await fetchSeasonStandings(slug, seasonsToFetch)
@@ -157,16 +157,45 @@ async function fetchSeasonStandings(slug, seasons) {
   const batchSize = 2
   const results = []
 
-  const fetchWithRetry = async (season, retries = 2) => {
+  const fetchWithRetry = async (season, retries = 1) => {
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
-        // Fetch in parallel but with rate limiting handled in fetchJson
-        const [driverRes, constructorRes] = await Promise.all([
-          fetchJson(
-            `${ERGAST_BASE_URL}/${season}/drivers/${slug}/driverstandings/`
-          ),
-          fetchJson(`${ERGAST_BASE_URL}/${season}/constructorstandings/`),
-        ])
+        // Fetch driver standings first (required), constructor only for recent seasons
+        const driverRes = await fetchJson(
+          `${ERGAST_BASE_URL}/${season}/drivers/${slug}/driverstandings/`
+        )
+        
+        const standing =
+          driverRes?.MRData?.StandingsTable?.StandingsLists?.[0]
+            ?.DriverStandings?.[0]
+        if (!standing || !standing.position || standing.position === '?') {
+          return null
+        }
+        
+        // Only fetch constructor standings for recent seasons (last 5) to save time
+        const currentYear = new Date().getFullYear()
+        let isConstructorChampion = false
+        if (Number(season) >= currentYear - 5) {
+          try {
+            const constructorRes = await fetchJson(
+              `${ERGAST_BASE_URL}/${season}/constructorstandings/`
+            )
+            const championConstructor =
+              constructorRes?.MRData?.StandingsTable?.StandingsLists?.[0]
+                ?.ConstructorStandings?.[0]?.Constructor?.name
+            const constructors = (standing.Constructors || []).map(
+              (team) => team.name
+            )
+            isConstructorChampion = constructors.includes(championConstructor)
+          } catch (err) {
+            // Ignore constructor fetch errors for older seasons
+            console.warn(`Skipping constructor data for ${season}`)
+          }
+        }
+        
+        const constructors = (standing.Constructors || []).map(
+          (team) => team.name
+        )
         const standing =
           driverRes?.MRData?.StandingsTable?.StandingsLists?.[0]
             ?.DriverStandings?.[0]
