@@ -374,13 +374,14 @@ function buildPopupHtml(data) {
   const lastSeason = completeSeasons.at(-1)?.season || seasons.at(-1)?.season
   const firstSeason = seasons[0]?.season
   
-  // Filter to only championship seasons (driver or constructor champion)
+  // Filter to only championship seasons (driver or constructor champion) for timeline
   const championSeasons = completeSeasons.filter(
     (season) => season.isChampion || season.isConstructorChampion
   )
   
-  const seasonsToDisplay = championSeasons.length
-    ? [...championSeasons].reverse()
+  // Show ALL seasons in the table, not just championship seasons
+  const seasonsToDisplay = completeSeasons.length
+    ? [...completeSeasons].reverse()
     : []
 
   const seasonRows = seasonsToDisplay.length
