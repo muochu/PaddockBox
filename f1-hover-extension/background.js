@@ -1,5 +1,7 @@
-const CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
+const CACHE_TTL_MS = 15 * 60 * 1000 // 15 minutes (increased to reduce API calls)
 const DRIVERS_LIST_CACHE_TTL_MS = 24 * 60 * 60 * 1000 // 24 hours
+const RATE_LIMIT_DELAY_MS = 200 // Delay between requests to avoid rate limiting
+const MAX_RETRIES = 3
 // Try mirror first, fallback to original Ergast API
 const ERGAST_MIRROR = 'https://api.jolpi.ca/ergast/f1'
 const ERGAST_ORIGINAL = 'http://ergast.com/api/f1'
@@ -202,13 +204,21 @@ async function fetchSeasonStandings(slug, seasons) {
 
   for (let i = 0; i < seasons.length; i += batchSize) {
     const batch = seasons.slice(i, i + batchSize)
-    const batchRequests = batch.map((season) => fetchWithRetry(season))
-    const batchResults = await Promise.all(batchRequests)
-    results.push(...batchResults.filter(Boolean))
+    // Process sequentially instead of in parallel to avoid rate limits
+    const batchResults = []
+    for (const season of batch) {
+      const result = await fetchWithRetry(season)
+      if (result) {
+        batchResults.push(result)
+      }
+      // Add delay between each request
+      await new Promise((resolve) => setTimeout(resolve, RATE_LIMIT_DELAY_MS))
+    }
+    results.push(...batchResults)
 
-    // Small delay between batches to be polite to the API
+    // Additional delay between batches
     if (i + batchSize < seasons.length) {
-      await new Promise((resolve) => setTimeout(resolve, 150))
+      await new Promise((resolve) => setTimeout(resolve, RATE_LIMIT_DELAY_MS * 2))
     }
   }
 
@@ -246,19 +256,23 @@ async function fetchSeasonResultsData(slug, season) {
   // Try multiple endpoints for better reliability
   const currentYear = new Date().getFullYear()
   const urls = []
-  
+
   if (Number(season) === currentYear) {
     // For current season, try current endpoint first
-    urls.push(`${ERGAST_BASE_URL}/current/drivers/${slug}/results.json?limit=500`)
+    urls.push(
+      `${ERGAST_BASE_URL}/current/drivers/${slug}/results.json?limit=500`
+    )
   }
   // Always try the specific season endpoint
-  urls.push(`${ERGAST_BASE_URL}/${season}/drivers/${slug}/results.json?limit=500`)
+  urls.push(
+    `${ERGAST_BASE_URL}/${season}/drivers/${slug}/results.json?limit=500`
+  )
 
   for (const url of urls) {
     try {
       const res = await fetchJson(url) // Try with fallback
       const races = res?.MRData?.RaceTable?.Races ?? []
-      
+
       if (races.length > 0) {
         const parsed = races
           .map((race) => {
