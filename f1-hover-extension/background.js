@@ -10,9 +10,6 @@ const cache = new Map()
 let driversListCache = null
 let driversListExpiresAt = 0
 let lastRequestTime = 0
-let requestQueue = []
-let isProcessingQueue = false
-let lastRequestTime = 0
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type === 'fetch-driver') {
