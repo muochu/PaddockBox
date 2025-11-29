@@ -181,10 +181,15 @@ async function handleDriverRequest(slug, loadAllSeasons = false) {
       currentSeason ? fetchSeasonResultsData(slug, currentSeason) : null,
       fetchSeasonSummaries(slug, recentSeasonIds),
     ])
-  
+
   // If current season results failed but we have a current season, try again with more aggressive fetching
-  if (currentSeason && (!currentSeasonResults || currentSeasonResults.races.length === 0)) {
-    console.log(`F1 Hover Stats background: Retrying race results for ${currentSeason}/${slug}`)
+  if (
+    currentSeason &&
+    (!currentSeasonResults || currentSeasonResults.races.length === 0)
+  ) {
+    console.log(
+      `F1 Hover Stats background: Retrying race results for ${currentSeason}/${slug}`
+    )
     const retryResults = await fetchSeasonResultsData(slug, currentSeason)
     if (retryResults && retryResults.races.length > 0) {
       currentSeasonResults = retryResults
@@ -360,36 +365,40 @@ async function fetchSeasonResultsData(slug, season) {
   if (Number(season) === currentYear) {
     urls.push({
       url: `${ERGAST_BASE_URL}/current/drivers/${slug}/results.json?limit=500`,
-      source: 'ergast-current'
+      source: 'ergast-current',
     })
   }
-  
+
   // 2. Specific season endpoint (most reliable for historical data)
   urls.push({
     url: `${ERGAST_BASE_URL}/${season}/drivers/${slug}/results.json?limit=500`,
-    source: 'ergast-season'
+    source: 'ergast-season',
   })
-  
+
   // 3. Try without limit (some drivers have many races)
   urls.push({
     url: `${ERGAST_BASE_URL}/${season}/drivers/${slug}/results.json`,
-    source: 'ergast-no-limit'
+    source: 'ergast-no-limit',
   })
-  
+
   // 4. Try alternative endpoint format
   urls.push({
     url: `${ERGAST_BASE_URL}/${season}/drivers/${slug}/results.json?limit=1000`,
-    source: 'ergast-high-limit'
+    source: 'ergast-high-limit',
   })
 
   for (const { url, source } of urls) {
     try {
-      console.log(`F1 Hover Stats background: Trying ${source} for ${season}/${slug}`)
+      console.log(
+        `F1 Hover Stats background: Trying ${source} for ${season}/${slug}`
+      )
       const res = await fetchJson(url)
       const races = res?.MRData?.RaceTable?.Races ?? []
 
       if (races.length > 0) {
-        console.log(`F1 Hover Stats background: Successfully fetched ${races.length} races from ${source}`)
+        console.log(
+          `F1 Hover Stats background: Successfully fetched ${races.length} races from ${source}`
+        )
         const parsed = races
           .map((race) => {
             const result = race.Results?.[0]
@@ -418,7 +427,9 @@ async function fetchSeasonResultsData(slug, season) {
           summary,
         }
       } else {
-        console.warn(`F1 Hover Stats background: ${source} returned 0 races for ${season}/${slug}`)
+        console.warn(
+          `F1 Hover Stats background: ${source} returned 0 races for ${season}/${slug}`
+        )
       }
     } catch (error) {
       console.warn(
