@@ -521,7 +521,7 @@ function buildPopupHtml(data, slug = '') {
     '–'
 
   const overallStatBlocks = [
-    { label: 'Seasons', value: totalSeasonsCount },
+    { label: 'Seasons', value: displayTotalSeasonsCount },
     { label: 'Active', value: `${firstSeason || '-'}–${lastSeason || '-'}` },
     { label: 'Wins', value: totalWins },
     { label: 'Titles', value: championships },
