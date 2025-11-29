@@ -274,41 +274,7 @@ async function handleDriverFocus(target, x, y) {
     
     // Attach event listeners
     setTimeout(() => {
-      // "Show more" button
-      const showMoreBtn = popup.querySelector('.show-more-btn')
-      if (showMoreBtn) {
-        showMoreBtn.addEventListener('click', async (e) => {
-          e.stopPropagation()
-          const btnSlug = showMoreBtn.dataset.driverSlug
-          if (!btnSlug) return
-          
-          showMoreBtn.textContent = 'Loading...'
-          showMoreBtn.disabled = true
-          
-          try {
-            // Clear cache and fetch all seasons
-            driverDataCache.delete(btnSlug)
-            const fullData = await requestDriverDataFromBackground(
-              btnSlug,
-              true
-            ) // Pass loadAllSeasons flag
-            
-            // Rebuild popup with all seasons
-            const fullHtml = buildPopupHtml(fullData, btnSlug)
-            popup.innerHTML = fullHtml
-            positionPopup()
-            
-            // Re-attach event listeners
-            attachPopupEventListeners(btnSlug)
-          } catch (error) {
-            console.error('Failed to load more seasons:', error)
-            showMoreBtn.textContent = 'Error - Try again'
-            showMoreBtn.disabled = false
-          }
-        })
-      }
-      
-      // Season year click handlers
+      attachPopupEventListeners(slug)
       attachSeasonClickHandlers(slug, data)
     }, 100)
   } catch (error) {
@@ -452,7 +418,9 @@ function buildPopupHtml(data, slug = '') {
             : ''
           return `
         <div class="season-row">
-          <span class="season-year clickable-season" data-season="${season.season}" data-driver-slug="${slug}">
+          <span class="season-year clickable-season" data-season="${
+            season.season
+          }" data-driver-slug="${slug}">
             ${season.season}
             ${driverBadge}
             ${constructorBadge}
@@ -586,7 +554,9 @@ function buildPopupHtml(data, slug = '') {
             <span class="result-meta">${formatDate(race.date)}</span>
           </div>
           <div class="gp-metrics">
-            <span>P${race.positionText}${Number(race.position) === 1 ? ' 🏁' : ''}</span>
+            <span>P${race.positionText}${
+            Number(race.position) === 1 ? ' 🏁' : ''
+          }</span>
             <span>${race.points} pts</span>
             <span>Grid ${race.grid}</span>
             <span>${race.status}</span>
@@ -701,6 +671,137 @@ function handleFocusOut(event) {
     return
   }
   hidePopup()
+}
+
+// Attach event listeners for popup interactions
+function attachPopupEventListeners(slug) {
+  // Re-attach "Show more" button
+  const showMoreBtn = popup.querySelector('.show-more-btn')
+  if (showMoreBtn) {
+    showMoreBtn.addEventListener('click', async (e) => {
+      e.stopPropagation()
+      const btnSlug = showMoreBtn.dataset.driverSlug
+      if (!btnSlug) return
+      
+      showMoreBtn.textContent = 'Loading...'
+      showMoreBtn.disabled = true
+      
+      try {
+        driverDataCache.delete(btnSlug)
+        const fullData = await requestDriverDataFromBackground(btnSlug, true)
+        const fullHtml = buildPopupHtml(fullData, btnSlug)
+        popup.innerHTML = fullHtml
+        positionPopup()
+        attachPopupEventListeners(btnSlug)
+        attachSeasonClickHandlers(btnSlug, fullData)
+      } catch (error) {
+        console.error('Failed to load more seasons:', error)
+        showMoreBtn.textContent = 'Error - Try again'
+        showMoreBtn.disabled = false
+      }
+    })
+  }
+}
+
+// Attach click handlers for season years
+function attachSeasonClickHandlers(slug, data) {
+  const seasonYears = popup.querySelectorAll('.clickable-season')
+  seasonYears.forEach((yearEl) => {
+    yearEl.addEventListener('click', async (e) => {
+      e.stopPropagation()
+      const selectedSeason = yearEl.dataset.season
+      if (!selectedSeason) return
+      
+      // Highlight selected season
+      seasonYears.forEach((el) => el.classList.remove('selected'))
+      yearEl.classList.add('selected')
+      
+      // Show loading in race results section
+      const gpList = popup.querySelector('.gp-list')
+      if (gpList) {
+        gpList.innerHTML = '<div class="loading-race-results">Loading race results...</div>'
+      }
+      
+      try {
+        // Fetch race results for selected season
+        const raceResults = await fetchSeasonRaceResults(slug, selectedSeason)
+        
+        // Update race results display
+        const sortedResults = [...raceResults].sort((a, b) => {
+          if (a.round && b.round) {
+            return Number(b.round) - Number(a.round)
+          }
+          if (a.date && b.date) {
+            return new Date(b.date) - new Date(a.date)
+          }
+          return 0
+        })
+        
+        const gpRows = sortedResults.length
+          ? sortedResults
+              .map(
+                (race) => `
+              <div class="gp-row">
+                <div class="gp-meta">
+                  <strong>${race.raceName}</strong>
+                  <span class="result-meta">${formatDate(race.date)}</span>
+                </div>
+                <div class="gp-metrics">
+                  <span>P${race.positionText}${Number(race.position) === 1 ? ' 🏁' : ''}</span>
+                  <span>${race.points} pts</span>
+                  <span>Grid ${race.grid}</span>
+                  <span>${race.status}</span>
+                </div>
+              </div>
+            `
+              )
+              .join('')
+          : '<div class="empty-message">No race results available for this season.</div>'
+        
+        if (gpList) {
+          gpList.innerHTML = gpRows
+        }
+        
+        // Update section title
+        const sectionTitle = popup.querySelector('.section-title')
+        if (sectionTitle && sectionTitle.textContent.includes('Race results')) {
+          sectionTitle.innerHTML = `Race results (${selectedSeason}) <span class="race-results-hint">Click a year above to view</span>`
+        }
+      } catch (error) {
+        console.error('Failed to load race results:', error)
+        if (gpList) {
+          gpList.innerHTML = '<div class="empty-message">Failed to load race results for this season.</div>'
+        }
+      }
+    })
+  })
+}
+
+// Fetch race results for a specific season
+function fetchSeasonRaceResults(slug, season) {
+  return new Promise((resolve, reject) => {
+    if (!chrome?.runtime?.sendMessage) {
+      reject(new Error('Extension messaging unavailable'))
+      return
+    }
+    
+    chrome.runtime.sendMessage(
+      { type: 'fetch-season-results', slug, season },
+      (response) => {
+        if (chrome.runtime.lastError) {
+          reject(new Error(chrome.runtime.lastError.message))
+          return
+        }
+        
+        if (response?.error) {
+          reject(new Error(response.error))
+          return
+        }
+        
+        resolve(response?.data?.races || [])
+      }
+    )
+  })
 }
 
 // Hardcoded fallback drivers list
