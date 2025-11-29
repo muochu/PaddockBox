@@ -208,25 +208,16 @@ async function fetchSeasonStandings(slug, seasons) {
     return null
   }
 
-  for (let i = 0; i < seasons.length; i += batchSize) {
-    const batch = seasons.slice(i, i + batchSize)
-    // Process sequentially instead of in parallel to avoid rate limits
-    const batchResults = []
-    for (const season of batch) {
-      const result = await fetchWithRetry(season)
-      if (result) {
-        batchResults.push(result)
-      }
-      // Add delay between each request
-      await new Promise((resolve) => setTimeout(resolve, RATE_LIMIT_DELAY_MS))
+  // Process all seasons sequentially with delays to avoid rate limits
+  for (let i = 0; i < seasons.length; i++) {
+    const season = seasons[i]
+    const result = await fetchWithRetry(season)
+    if (result) {
+      results.push(result)
     }
-    results.push(...batchResults)
-
-    // Additional delay between batches
-    if (i + batchSize < seasons.length) {
-      await new Promise((resolve) =>
-        setTimeout(resolve, RATE_LIMIT_DELAY_MS * 2)
-      )
+    // Add delay between each season request (longer delay to avoid rate limits)
+    if (i < seasons.length - 1) {
+      await new Promise((resolve) => setTimeout(resolve, RATE_LIMIT_DELAY_MS * 2))
     }
   }
 
