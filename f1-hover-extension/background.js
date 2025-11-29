@@ -149,19 +149,21 @@ async function fetchSeasonStandings(slug, seasons) {
     return []
   }
 
-  // Fetch in batches to avoid overwhelming the API
-  const batchSize = 5
+  // Fetch in smaller batches and sequentially to avoid rate limiting
+  const batchSize = 2
   const results = []
 
   const fetchWithRetry = async (season, retries = 2) => {
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
-        const [driverRes, constructorRes] = await Promise.all([
-          fetchJson(
-            `${ERGAST_BASE_URL}/${season}/drivers/${slug}/driverstandings/`
-          ),
-          fetchJson(`${ERGAST_BASE_URL}/${season}/constructorstandings/`),
-        ])
+        // Fetch sequentially to avoid rate limits
+        const driverRes = await fetchJson(
+          `${ERGAST_BASE_URL}/${season}/drivers/${slug}/driverstandings/`
+        )
+        await new Promise((resolve) => setTimeout(resolve, RATE_LIMIT_DELAY_MS))
+        const constructorRes = await fetchJson(
+          `${ERGAST_BASE_URL}/${season}/constructorstandings/`
+        )
         const standing =
           driverRes?.MRData?.StandingsTable?.StandingsLists?.[0]
             ?.DriverStandings?.[0]
