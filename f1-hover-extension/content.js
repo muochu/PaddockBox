@@ -271,7 +271,7 @@ async function handleDriverFocus(target, x, y) {
     }
     const html = buildPopupHtml(data, slug)
     showPopup(html, x, y)
-    
+
     // Attach event listeners
     setTimeout(() => {
       attachPopupEventListeners(slug)
@@ -605,7 +605,7 @@ function buildPopupHtml(data, slug = '') {
           <div class="section-block gp-section">
             <div class="section-title">Race results ${
               currentSeason?.season ? `(${currentSeason.season})` : ''
-            } <span class="race-results-hint">Click a year above to view</span></div>
+            }</div>
             <div class="gp-list">${gpRows}</div>
           </div>
         </div>
@@ -684,10 +684,10 @@ function attachPopupEventListeners(slug) {
       e.stopPropagation()
       const btnSlug = showMoreBtn.dataset.driverSlug
       if (!btnSlug) return
-      
+
       showMoreBtn.textContent = 'Loading...'
       showMoreBtn.disabled = true
-      
+
       try {
         driverDataCache.delete(btnSlug)
         const fullData = await requestDriverDataFromBackground(btnSlug, true)
@@ -713,21 +713,22 @@ function attachSeasonClickHandlers(slug, data) {
       e.stopPropagation()
       const selectedSeason = yearEl.dataset.season
       if (!selectedSeason) return
-      
+
       // Highlight selected season
       seasonYears.forEach((el) => el.classList.remove('selected'))
       yearEl.classList.add('selected')
-      
+
       // Show loading in race results section
       const gpList = popup.querySelector('.gp-list')
       if (gpList) {
-        gpList.innerHTML = '<div class="loading-race-results">Loading race results...</div>'
+        gpList.innerHTML =
+          '<div class="loading-race-results">Loading race results...</div>'
       }
-      
+
       try {
         // Fetch race results for selected season
         const raceResults = await fetchSeasonRaceResults(slug, selectedSeason)
-        
+
         // Update race results display
         const sortedResults = [...raceResults].sort((a, b) => {
           if (a.round && b.round) {
@@ -738,7 +739,7 @@ function attachSeasonClickHandlers(slug, data) {
           }
           return 0
         })
-        
+
         const gpRows = sortedResults.length
           ? sortedResults
               .map(
@@ -749,7 +750,9 @@ function attachSeasonClickHandlers(slug, data) {
                   <span class="result-meta">${formatDate(race.date)}</span>
                 </div>
                 <div class="gp-metrics">
-                  <span>P${race.positionText}${Number(race.position) === 1 ? ' 🏁' : ''}</span>
+                  <span>P${race.positionText}${
+                  Number(race.position) === 1 ? ' 🏁' : ''
+                }</span>
                   <span>${race.points} pts</span>
                   <span>Grid ${race.grid}</span>
                   <span>${race.status}</span>
@@ -759,20 +762,21 @@ function attachSeasonClickHandlers(slug, data) {
               )
               .join('')
           : '<div class="empty-message">No race results available for this season.</div>'
-        
+
         if (gpList) {
           gpList.innerHTML = gpRows
         }
-        
+
         // Update section title
         const sectionTitle = popup.querySelector('.section-title')
         if (sectionTitle && sectionTitle.textContent.includes('Race results')) {
-          sectionTitle.innerHTML = `Race results (${selectedSeason}) <span class="race-results-hint">Click a year above to view</span>`
+          sectionTitle.innerHTML = `Race results (${selectedSeason})`
         }
       } catch (error) {
         console.error('Failed to load race results:', error)
         if (gpList) {
-          gpList.innerHTML = '<div class="empty-message">Failed to load race results for this season.</div>'
+          gpList.innerHTML =
+            '<div class="empty-message">Failed to load race results for this season.</div>'
         }
       }
     })
@@ -786,7 +790,7 @@ function fetchSeasonRaceResults(slug, season) {
       reject(new Error('Extension messaging unavailable'))
       return
     }
-    
+
     chrome.runtime.sendMessage(
       { type: 'fetch-season-results', slug, season },
       (response) => {
@@ -794,12 +798,12 @@ function fetchSeasonRaceResults(slug, season) {
           reject(new Error(chrome.runtime.lastError.message))
           return
         }
-        
+
         if (response?.error) {
           reject(new Error(response.error))
           return
         }
-        
+
         resolve(response?.data?.races || [])
       }
     )

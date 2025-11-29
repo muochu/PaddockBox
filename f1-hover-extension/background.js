@@ -47,7 +47,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     fetchSeasonResultsData(message.slug, message.season)
       .then((data) => sendResponse({ data }))
       .catch((error) => {
-        console.error('F1 Hover Stats background: Error fetching season results:', error)
+        console.error(
+          'F1 Hover Stats background: Error fetching season results:',
+          error
+        )
         sendResponse({ error: error.message || 'Unknown error' })
       })
     return true
@@ -171,12 +174,22 @@ async function handleDriverRequest(slug, loadAllSeasons = false) {
 
   const recentSeasonIds = orderedSeasons.slice(-3).map((s) => s.season)
 
+  // Fetch current season data - always try to get race results even if snapshot fails
   const [currentSeasonSnapshot, currentSeasonResults, seasonSummaries] =
     await Promise.all([
       currentSeason ? fetchCurrentSeasonSnapshot(slug, currentSeason) : null,
       currentSeason ? fetchSeasonResultsData(slug, currentSeason) : null,
       fetchSeasonSummaries(slug, recentSeasonIds),
     ])
+  
+  // If current season results failed but we have a current season, try again with more aggressive fetching
+  if (currentSeason && (!currentSeasonResults || currentSeasonResults.races.length === 0)) {
+    console.log(`F1 Hover Stats background: Retrying race results for ${currentSeason}/${slug}`)
+    const retryResults = await fetchSeasonResultsData(slug, currentSeason)
+    if (retryResults && retryResults.races.length > 0) {
+      currentSeasonResults = retryResults
+    }
+  }
 
   const data = {
     driver,
@@ -338,27 +351,45 @@ async function fetchCurrentSeasonSnapshot(slug, season) {
 }
 
 async function fetchSeasonResultsData(slug, season) {
-  // Try multiple endpoints for better reliability
+  // Try multiple endpoints and data sources for better reliability
   const currentYear = new Date().getFullYear()
   const urls = []
 
+  // Strategy: Try multiple endpoints in order of preference
+  // 1. Current season endpoint (if applicable)
   if (Number(season) === currentYear) {
-    // For current season, try current endpoint first
-    urls.push(
-      `${ERGAST_BASE_URL}/current/drivers/${slug}/results.json?limit=500`
-    )
+    urls.push({
+      url: `${ERGAST_BASE_URL}/current/drivers/${slug}/results.json?limit=500`,
+      source: 'ergast-current'
+    })
   }
-  // Always try the specific season endpoint
-  urls.push(
-    `${ERGAST_BASE_URL}/${season}/drivers/${slug}/results.json?limit=500`
-  )
+  
+  // 2. Specific season endpoint (most reliable for historical data)
+  urls.push({
+    url: `${ERGAST_BASE_URL}/${season}/drivers/${slug}/results.json?limit=500`,
+    source: 'ergast-season'
+  })
+  
+  // 3. Try without limit (some drivers have many races)
+  urls.push({
+    url: `${ERGAST_BASE_URL}/${season}/drivers/${slug}/results.json`,
+    source: 'ergast-no-limit'
+  })
+  
+  // 4. Try alternative endpoint format
+  urls.push({
+    url: `${ERGAST_BASE_URL}/${season}/drivers/${slug}/results.json?limit=1000`,
+    source: 'ergast-high-limit'
+  })
 
-  for (const url of urls) {
+  for (const { url, source } of urls) {
     try {
-      const res = await fetchJson(url) // Try with fallback
+      console.log(`F1 Hover Stats background: Trying ${source} for ${season}/${slug}`)
+      const res = await fetchJson(url)
       const races = res?.MRData?.RaceTable?.Races ?? []
 
       if (races.length > 0) {
+        console.log(`F1 Hover Stats background: Successfully fetched ${races.length} races from ${source}`)
         const parsed = races
           .map((race) => {
             const result = race.Results?.[0]
@@ -386,10 +417,12 @@ async function fetchSeasonResultsData(slug, season) {
           races: parsed,
           summary,
         }
+      } else {
+        console.warn(`F1 Hover Stats background: ${source} returned 0 races for ${season}/${slug}`)
       }
     } catch (error) {
       console.warn(
-        `F1 Hover Stats background: Failed to fetch from ${url}:`,
+        `F1 Hover Stats background: Failed to fetch from ${source} (${url}):`,
         error.message
       )
       // Continue to next URL
