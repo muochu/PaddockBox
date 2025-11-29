@@ -267,6 +267,39 @@
   flex-wrap: wrap;
 }
 
+.clickable-season {
+  cursor: pointer;
+  transition: all 0.2s;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+
+.clickable-season:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.clickable-season.selected {
+  background: rgba(255, 215, 0, 0.2);
+  color: #ffd700;
+  font-weight: 700;
+}
+
+.race-results-hint {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.5);
+  font-weight: normal;
+  font-style: italic;
+  margin-left: 8px;
+}
+
+.loading-race-results {
+  text-align: center;
+  padding: 20px;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 12px;
+}
+
 .season-team {
   color: rgba(255, 255, 255, 0.85);
   overflow: hidden;

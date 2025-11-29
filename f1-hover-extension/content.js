@@ -641,7 +641,7 @@ function buildPopupHtml(data, slug = '') {
           <div class="section-block gp-section">
             <div class="section-title">Race results ${
               currentSeason?.season ? `(${currentSeason.season})` : ''
-            }</div>
+            } <span class="race-results-hint">Click a year above to view</span></div>
             <div class="gp-list">${gpRows}</div>
           </div>
         </div>
