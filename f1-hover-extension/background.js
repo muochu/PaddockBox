@@ -175,6 +175,9 @@ async function handleDriverRequest(slug, loadAllSeasons = false) {
     seasonSummaries,
     seasonResults: currentSeasonResults?.races ?? [],
     seasonResultsSummary: currentSeasonResults?.summary ?? null,
+    allSeasonsLoaded: loadAllSeasons || remainingSeasons.length === 0, // True if all seasons loaded
+    hasMoreSeasons: !loadAllSeasons && remainingSeasons.length > 0, // True if there are more seasons to load
+    totalSeasonsCount: validSeasons.length, // Total number of seasons available
   }
   cache.set(slug, { data, expiresAt: now + CACHE_TTL_MS })
   return data
