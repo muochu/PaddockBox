@@ -271,7 +271,7 @@ async function handleDriverFocus(target, x, y) {
     }
     const html = buildPopupHtml(data, slug)
     showPopup(html, x, y)
-    
+
     // Attach event listener to "Show more" button if it exists
     setTimeout(() => {
       const showMoreBtn = popup.querySelector('.show-more-btn')
@@ -280,20 +280,23 @@ async function handleDriverFocus(target, x, y) {
           e.stopPropagation()
           const btnSlug = showMoreBtn.dataset.driverSlug
           if (!btnSlug) return
-          
+
           showMoreBtn.textContent = 'Loading...'
           showMoreBtn.disabled = true
-          
+
           try {
             // Clear cache and fetch all seasons
             driverDataCache.delete(btnSlug)
-            const fullData = await requestDriverDataFromBackground(btnSlug, true) // Pass loadAllSeasons flag
-            
+            const fullData = await requestDriverDataFromBackground(
+              btnSlug,
+              true
+            ) // Pass loadAllSeasons flag
+
             // Rebuild popup with all seasons
             const fullHtml = buildPopupHtml(fullData, btnSlug)
             popup.innerHTML = fullHtml
             positionPopup()
-            
+
             // Re-attach event listener if button still exists
             const newBtn = popup.querySelector('.show-more-btn')
             if (newBtn) {
@@ -367,34 +370,37 @@ function requestDriverDataFromBackground(slug, loadAllSeasons = false) {
       )
     }, 60000) // 60 second timeout (increased from 30s)
 
-    chrome.runtime.sendMessage({ type: 'fetch-driver', slug, loadAllSeasons }, (response) => {
-      clearTimeout(timeout)
+    chrome.runtime.sendMessage(
+      { type: 'fetch-driver', slug, loadAllSeasons },
+      (response) => {
+        clearTimeout(timeout)
 
-      if (chrome.runtime.lastError) {
-        const errorMsg = chrome.runtime.lastError.message
-        console.error('F1 Hover Stats: Background error:', errorMsg)
-        reject(new Error(`Background worker error: ${errorMsg}`))
-        return
+        if (chrome.runtime.lastError) {
+          const errorMsg = chrome.runtime.lastError.message
+          console.error('F1 Hover Stats: Background error:', errorMsg)
+          reject(new Error(`Background worker error: ${errorMsg}`))
+          return
+        }
+
+        if (!response) {
+          reject(new Error('Empty response from background worker'))
+          return
+        }
+
+        if (response.error) {
+          console.error('F1 Hover Stats: API error:', response.error)
+          reject(new Error(response.error))
+          return
+        }
+
+        if (!response.data) {
+          reject(new Error('No data in response'))
+          return
+        }
+
+        resolve(response.data)
       }
-
-      if (!response) {
-        reject(new Error('Empty response from background worker'))
-        return
-      }
-
-      if (response.error) {
-        console.error('F1 Hover Stats: API error:', response.error)
-        reject(new Error(response.error))
-        return
-      }
-
-      if (!response.data) {
-        reject(new Error('No data in response'))
-        return
-      }
-
-      resolve(response.data)
-    })
+    )
   })
 }
 
@@ -426,7 +432,8 @@ function buildPopupHtml(data, slug = '') {
   ).length
 
   // Use totalSeasonsCount from data if available, otherwise use seasons.length
-  const displayTotalSeasonsCount = totalSeasonsCount > 0 ? totalSeasonsCount : seasons.length
+  const displayTotalSeasonsCount =
+    totalSeasonsCount > 0 ? totalSeasonsCount : seasons.length
   const lastSeason = completeSeasons.at(-1)?.season || seasons.at(-1)?.season
   const firstSeason = seasons[0]?.season
 
@@ -466,15 +473,20 @@ function buildPopupHtml(data, slug = '') {
         })
         .join('')
     : '<div class="season-row">No season data available yet.</div>'
-  
+
   // Add "Show more" button if there are more seasons
-  const showMoreButton = hasMoreSeasons && !allSeasonsLoaded
-    ? `<div class="show-more-container">
-        <button class="show-more-btn" data-driver-slug="${driver.driverId || slug || ''}">
-          Show ${displayTotalSeasonsCount - seasons.length} more season${displayTotalSeasonsCount - seasons.length > 1 ? 's' : ''}
+  const showMoreButton =
+    hasMoreSeasons && !allSeasonsLoaded
+      ? `<div class="show-more-container">
+        <button class="show-more-btn" data-driver-slug="${
+          driver.driverId || slug || ''
+        }">
+          Show ${displayTotalSeasonsCount - seasons.length} more season${
+          displayTotalSeasonsCount - seasons.length > 1 ? 's' : ''
+        }
         </button>
       </div>`
-    : ''
+      : ''
 
   const timelineSeasons = championSeasons
     .slice()
@@ -558,8 +570,21 @@ function buildPopupHtml(data, slug = '') {
   }
   const statHtml = statHtmlSections.join('')
 
-  const gpRows = seasonResults.length
-    ? seasonResults
+  // Sort races: latest first (by round number descending, or date if round not available)
+  const sortedSeasonResults = [...seasonResults].sort((a, b) => {
+    // If round numbers are available, sort by round (descending - latest first)
+    if (a.round && b.round) {
+      return Number(b.round) - Number(a.round)
+    }
+    // Otherwise sort by date (descending - latest first)
+    if (a.date && b.date) {
+      return new Date(b.date) - new Date(a.date)
+    }
+    return 0
+  })
+
+  const gpRows = sortedSeasonResults.length
+    ? sortedSeasonResults
         .map(
           (race) => `
         <div class="gp-row">

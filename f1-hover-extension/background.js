@@ -329,6 +329,7 @@ async function fetchSeasonResultsData(slug, season) {
               return null
             }
             return {
+              round: Number(race.round) || 0,
               raceName: race.raceName,
               circuit: race.Circuit?.circuitName,
               date: race.date,
