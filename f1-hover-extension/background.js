@@ -9,6 +9,9 @@ const ERGAST_BASE_URL = ERGAST_MIRROR
 const cache = new Map()
 let driversListCache = null
 let driversListExpiresAt = 0
+let requestQueue = []
+let isProcessingQueue = false
+let lastRequestTime = 0
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type === 'fetch-driver') {
@@ -220,7 +223,9 @@ async function fetchSeasonStandings(slug, seasons) {
 
     // Additional delay between batches
     if (i + batchSize < seasons.length) {
-      await new Promise((resolve) => setTimeout(resolve, RATE_LIMIT_DELAY_MS * 2))
+      await new Promise((resolve) =>
+        setTimeout(resolve, RATE_LIMIT_DELAY_MS * 2)
+      )
     }
   }
 
@@ -485,11 +490,20 @@ async function handleDriversListRequest() {
 async function fetchJson(url, retryWithOriginal = true, retryCount = 0) {
   console.log('F1 Hover Stats background: Fetching', url)
   
-  // Add delay to avoid rate limiting
+  // Enforce minimum time between requests to avoid rate limiting
+  const timeSinceLastRequest = Date.now() - lastRequestTime
+  if (timeSinceLastRequest < RATE_LIMIT_DELAY_MS) {
+    const waitTime = RATE_LIMIT_DELAY_MS - timeSinceLastRequest
+    await new Promise((resolve) => setTimeout(resolve, waitTime))
+  }
+  
+  // Add delay to avoid rate limiting (only on first attempt)
   if (retryCount === 0) {
     await new Promise((resolve) => setTimeout(resolve, RATE_LIMIT_DELAY_MS))
   }
   
+  lastRequestTime = Date.now()
+
   try {
     const response = await fetch(url, { cache: 'no-store' })
     console.log(
@@ -498,17 +512,19 @@ async function fetchJson(url, retryWithOriginal = true, retryCount = 0) {
       'for',
       url
     )
-    
+
     // Handle rate limiting with exponential backoff
     if (response.status === 429) {
       const retryAfter = response.headers.get('Retry-After')
       const waitTime = retryAfter
         ? Number(retryAfter) * 1000
         : Math.min(1000 * Math.pow(2, retryCount), 10000) // Exponential backoff, max 10s
-      
+
       if (retryCount < MAX_RETRIES) {
         console.warn(
-          `F1 Hover Stats background: Rate limited (429), waiting ${waitTime}ms before retry ${retryCount + 1}/${MAX_RETRIES}`
+          `F1 Hover Stats background: Rate limited (429), waiting ${waitTime}ms before retry ${
+            retryCount + 1
+          }/${MAX_RETRIES}`
         )
         await new Promise((resolve) => setTimeout(resolve, waitTime))
         return fetchJson(url, retryWithOriginal, retryCount + 1)
@@ -518,7 +534,7 @@ async function fetchJson(url, retryWithOriginal = true, retryCount = 0) {
         )
       }
     }
-    
+
     if (!response.ok) {
       throw new Error(
         `Request failed: ${response.status} ${response.statusText}`
@@ -532,7 +548,7 @@ async function fetchJson(url, retryWithOriginal = true, retryCount = 0) {
     if (error.message?.includes('Rate limited')) {
       throw error
     }
-    
+
     console.error('F1 Hover Stats background: Fetch error for', url, ':', error)
 
     // If using mirror and it fails, try original Ergast API as fallback

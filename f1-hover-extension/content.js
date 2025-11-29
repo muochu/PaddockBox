@@ -275,14 +275,18 @@ async function handleDriverFocus(target, x, y) {
     console.error('F1 Hover Stats:', error)
     if (activeSlug === slug) {
       const errorMessage = error?.message || 'Unknown error'
+      const isRateLimited = errorMessage.includes('Rate limited') || errorMessage.includes('429')
+      
       showPopup(
         `<div class="error-message">
-          <strong>Unable to load driver data.</strong>
+          <strong>${isRateLimited ? 'Rate Limited' : 'Unable to load driver data'}</strong>
           <div style="font-size: 11px; color: rgba(255,255,255,0.6); margin-top: 8px;">
-            ${errorMessage}
+            ${isRateLimited 
+              ? 'Too many requests. Please wait 30 seconds and try again. Data is cached for faster loading.'
+              : errorMessage}
           </div>
           <div style="font-size: 10px; color: rgba(255,255,255,0.4); margin-top: 4px;">
-            Check console for details
+            ${isRateLimited ? 'Tip: Hover over the same driver again in a moment.' : 'Check console for details'}
           </div>
         </div>`,
         x,
@@ -764,22 +768,26 @@ function init() {
   document.addEventListener('pointermove', handlePointerMove, true)
   document.addEventListener('focusin', handleFocusIn, true)
   document.addEventListener('focusout', handleFocusOut, true)
-  
+
   // Close popup when clicking outside of it
-  document.addEventListener('click', (event) => {
-    const target = event.target
-    // Don't close if clicking on a driver name or inside the popup
-    if (
-      target.closest?.(`.${DRIVER_CLASS}`) ||
-      target.closest?.(`.${POPUP_CLASS}`)
-    ) {
-      return
-    }
-    // Close the popup if it's visible
-    if (popup.style.display !== 'none') {
-      hidePopup()
-    }
-  }, true)
+  document.addEventListener(
+    'click',
+    (event) => {
+      const target = event.target
+      // Don't close if clicking on a driver name or inside the popup
+      if (
+        target.closest?.(`.${DRIVER_CLASS}`) ||
+        target.closest?.(`.${POPUP_CLASS}`)
+      ) {
+        return
+      }
+      // Close the popup if it's visible
+      if (popup.style.display !== 'none') {
+        hidePopup()
+      }
+    },
+    true
+  )
 }
 
 // Ensure we wait for the page to be ready
