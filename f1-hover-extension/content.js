@@ -275,18 +275,27 @@ async function handleDriverFocus(target, x, y) {
     console.error('F1 Hover Stats:', error)
     if (activeSlug === slug) {
       const errorMessage = error?.message || 'Unknown error'
-      const isRateLimited = errorMessage.includes('Rate limited') || errorMessage.includes('429')
-      
+      const isRateLimited =
+        errorMessage.includes('Rate limited') || errorMessage.includes('429')
+
       showPopup(
         `<div class="error-message">
-          <strong>${isRateLimited ? 'Rate Limited' : 'Unable to load driver data'}</strong>
+          <strong>${
+            isRateLimited ? 'Rate Limited' : 'Unable to load driver data'
+          }</strong>
           <div style="font-size: 11px; color: rgba(255,255,255,0.6); margin-top: 8px;">
-            ${isRateLimited 
-              ? 'Too many requests. Please wait 30 seconds and try again. Data is cached for faster loading.'
-              : errorMessage}
+            ${
+              isRateLimited
+                ? 'Too many requests. Please wait 30 seconds and try again. Data is cached for faster loading.'
+                : errorMessage
+            }
           </div>
           <div style="font-size: 10px; color: rgba(255,255,255,0.4); margin-top: 4px;">
-            ${isRateLimited ? 'Tip: Hover over the same driver again in a moment.' : 'Check console for details'}
+            ${
+              isRateLimited
+                ? 'Tip: Hover over the same driver again in a moment.'
+                : 'Check console for details'
+            }
           </div>
         </div>`,
         x,
@@ -452,11 +461,18 @@ function buildPopupHtml(data) {
       )
       .join('')
 
+  // Get current constructor from most recent season
+  const mostRecentSeason = completeSeasons.at(-1)
+  const currentConstructor = mostRecentSeason?.constructors?.join(', ') || 
+                             currentSeason?.constructors?.join(', ') || 
+                             '–'
+
   const overallStatBlocks = [
     { label: 'Seasons', value: totalSeasonsCount },
     { label: 'Active', value: `${firstSeason || '-'}–${lastSeason || '-'}` },
     { label: 'Wins', value: totalWins },
     { label: 'Titles', value: championships },
+    { label: 'Team', value: currentConstructor },
   ]
 
   const currentSeasonBlocks = []
