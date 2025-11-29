@@ -44,14 +44,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 })
 
-async function handleDriverRequest(slug) {
+async function handleDriverRequest(slug, loadAllSeasons = false) {
   if (!slug) {
     throw new Error('Missing driver slug')
   }
 
   const cached = cache.get(slug)
   const now = Date.now()
-  if (cached && cached.expiresAt > now) {
+  // If we have cached data and it has all seasons, return it
+  if (cached && cached.expiresAt > now && (!loadAllSeasons || cached.data.allSeasonsLoaded)) {
     return cached.data
   }
 
@@ -105,18 +106,43 @@ async function handleDriverRequest(slug) {
     (season) => Number(season) <= currentYear && Number(season) >= 1950
   )
 
-  // Limit to most recent 8 seasons for faster loading (reduced from 10)
-  const seasonsToFetch = validSeasons.slice(-8)
+  // If loadAllSeasons is true, fetch all seasons. Otherwise, just fetch 5 for fast loading
+  const seasonsToFetch = loadAllSeasons 
+    ? validSeasons.slice(-8) // Load up to 8 seasons when "Show more" is clicked
+    : validSeasons.slice(-5) // Initial load: only 5 seasons for speed
+  
+  const remainingSeasons = loadAllSeasons ? [] : validSeasons.slice(0, -5)
 
-  // Fetch standings for limited seasons (with better error handling)
+  // Fetch seasons
   const seasonsData = await fetchSeasonStandings(slug, seasonsToFetch)
+  
+  // If not loading all, fetch remaining in background
+  if (!loadAllSeasons && remainingSeasons.length > 0) {
+    fetchSeasonStandings(slug, remainingSeasons).then((remainingData) => {
+      const allSeasonsData = [...seasonsData, ...remainingData]
+      const seasonsMap = new Map()
+      allSeasonsData.forEach((s) => seasonsMap.set(s.season, s))
+      const completeSeasons = validSeasons
+        .map((season) => seasonsMap.get(season))
+        .filter(Boolean)
+        .sort((a, b) => Number(a.season) - Number(b.season))
+      
+      // Update cache with complete data
+      const cached = cache.get(slug)
+      if (cached) {
+        cached.data.seasons = completeSeasons
+        cached.data.allSeasonsLoaded = true
+      }
+    }).catch((err) => {
+      console.warn('Background season fetch failed:', err)
+    })
+  }
 
   // Only include seasons with actual data (no placeholders)
   const seasonsMap = new Map()
   seasonsData.forEach((s) => seasonsMap.set(s.season, s))
 
   // Only return seasons that have actual standings data
-  // This prevents showing "P? 0 pts" for seasons without data
   const completeSeasons = seasonsToFetch
     .map((season) => seasonsMap.get(season))
     .filter(Boolean) // Remove any null/undefined entries
@@ -226,10 +252,12 @@ async function fetchSeasonStandings(slug, seasons) {
     const batchPromises = batch.map((season) => fetchWithRetry(season))
     const batchResults = await Promise.all(batchPromises)
     results.push(...batchResults.filter(Boolean))
-    
+
     // Small delay between batches to avoid rate limits
     if (i + batchSize < seasons.length) {
-      await new Promise((resolve) => setTimeout(resolve, RATE_LIMIT_DELAY_MS * 2))
+      await new Promise((resolve) =>
+        setTimeout(resolve, RATE_LIMIT_DELAY_MS * 2)
+      )
     }
   }
 
