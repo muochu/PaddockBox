@@ -153,8 +153,6 @@ async function fetchSeasonStandings(slug, seasons) {
     return []
   }
 
-  // Fetch in smaller batches and sequentially to avoid rate limiting
-  const batchSize = 2
   const results = []
 
   const fetchWithRetry = async (season, retries = 1) => {
