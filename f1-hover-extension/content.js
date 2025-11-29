@@ -322,10 +322,10 @@ function requestDriverDataFromBackground(slug) {
       return
     }
 
-    // Add timeout to prevent hanging
+    // Add timeout to prevent hanging (increased for slower connections)
     const timeout = setTimeout(() => {
-      reject(new Error('Request timeout: Background worker did not respond'))
-    }, 30000) // 30 second timeout
+      reject(new Error('Request timeout: Background worker did not respond. The API may be slow. Please try again in a moment.'))
+    }, 60000) // 60 second timeout (increased from 30s)
 
     chrome.runtime.sendMessage({ type: 'fetch-driver', slug }, (response) => {
       clearTimeout(timeout)
@@ -463,9 +463,10 @@ function buildPopupHtml(data) {
 
   // Get current constructor from most recent season
   const mostRecentSeason = completeSeasons.at(-1)
-  const currentConstructor = mostRecentSeason?.constructors?.join(', ') || 
-                             currentSeason?.constructors?.join(', ') || 
-                             '–'
+  const currentConstructor =
+    mostRecentSeason?.constructors?.join(', ') ||
+    currentSeason?.constructors?.join(', ') ||
+    '–'
 
   const overallStatBlocks = [
     { label: 'Seasons', value: totalSeasonsCount },

@@ -105,8 +105,8 @@ async function handleDriverRequest(slug) {
     (season) => Number(season) <= currentYear && Number(season) >= 1950
   )
 
-  // Limit to most recent 10 seasons for faster loading
-  const seasonsToFetch = validSeasons.slice(-10)
+  // Limit to most recent 8 seasons for faster loading (reduced from 10)
+  const seasonsToFetch = validSeasons.slice(-8)
 
   // Fetch standings for limited seasons (with better error handling)
   const seasonsData = await fetchSeasonStandings(slug, seasonsToFetch)
@@ -164,18 +164,18 @@ async function fetchSeasonStandings(slug, seasons) {
         const driverRes = await fetchJson(
           `${ERGAST_BASE_URL}/${season}/drivers/${slug}/driverstandings/`
         )
-        
+
         const standing =
           driverRes?.MRData?.StandingsTable?.StandingsLists?.[0]
             ?.DriverStandings?.[0]
         if (!standing || !standing.position || standing.position === '?') {
           return null
         }
-        
+
         const constructors = (standing.Constructors || []).map(
           (team) => team.name
         )
-        
+
         // Only fetch constructor standings for recent seasons (last 5) to save time
         const currentYear = new Date().getFullYear()
         let isConstructorChampion = false
@@ -193,7 +193,7 @@ async function fetchSeasonStandings(slug, seasons) {
             console.warn(`Skipping constructor data for ${season}`)
           }
         }
-        
+
         return {
           season,
           position: standing.position,
