@@ -105,8 +105,11 @@ async function handleDriverRequest(slug) {
     (season) => Number(season) <= currentYear && Number(season) >= 1950
   )
 
-  // Fetch standings for valid seasons only (with better error handling)
-  const seasonsData = await fetchSeasonStandings(slug, validSeasons)
+  // Limit to most recent 15 seasons to avoid too many API calls
+  const seasonsToFetch = validSeasons.slice(-15)
+
+  // Fetch standings for limited seasons (with better error handling)
+  const seasonsData = await fetchSeasonStandings(slug, seasonsToFetch)
 
   // Only include seasons with actual data (no placeholders)
   const seasonsMap = new Map()
@@ -114,7 +117,7 @@ async function handleDriverRequest(slug) {
 
   // Only return seasons that have actual standings data
   // This prevents showing "P? 0 pts" for seasons without data
-  const completeSeasons = validSeasons
+  const completeSeasons = seasonsToFetch
     .map((season) => seasonsMap.get(season))
     .filter(Boolean) // Remove any null/undefined entries
 
